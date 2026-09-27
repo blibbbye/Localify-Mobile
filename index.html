@@ -115,6 +115,128 @@ function saveEntity(type,id){var n=($('#entityName').value||'').trim()||('New '+
 function editTrack(id){var t=track(id);if(!t)return;sheet('<div class="sheetHead"><strong>Edit song</strong><button class="circle" data-action="close-sheet"><svg class="i" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div class="field"><label>Title</label><input id="trackTitle" value="'+esc(title(t.fileName||t.title))+'"></div><div class="field"><label>Artist</label><input id="trackArtist" value="'+esc(artists(t)==='None'?'':artists(t))+'"></div><div class="field"><label>Album</label><input id="trackAlbum" value="'+esc(albumName(t)==='None'?'':albumName(t))+'"></div><div class="sheetFoot"><button class="btn" data-action="close-sheet">Cancel</button><button class="btn primary" data-action="save-track" data-id="'+id+'">Save</button></div>')}
 function saveTrack(id){var t=track(id);if(!t)return;t.title=($('#trackTitle').value||'').trim()||'Untitled';var an=($('#trackArtist').value||'').trim();if(an){var a=state.artists.find(function(x){return norm(x.name)===norm(an)});if(!a){a={id:uid(),name:an,image:null};state.artists.push(a)}t.artistIds=[a.id]}else t.artistIds=[];var al=($('#trackAlbum').value||'').trim();if(al){var b=state.albums.find(function(x){return norm(x.title)===norm(al)});if(!b){b={id:uid(),title:al,artistIds:t.artistIds||[],cover:null};state.albums.push(b)}t.albumId=b.id;t.album=al}else{t.albumId=null;t.album=''}schedule();closeSheet();render()}
 async function files(fs){var list=Array.prototype.slice.call(fs||[]).filter(function(f){return f.type.indexOf('audio/')===0||/\.(mp3|m4a|mp4|aac|flac|wav|ogg|oga|opus|webm|aiff|aif|alac|caf)$/i.test(f.name)});if(!list.length){toast('No supported audio files selected.');return}busy(true,'Adding songs','Saving files to this phone…',0,list.length);try{for(var i=0;i<list.length;i++){var f=list[i],id=uid(),path=f.webkitRelativePath||'',p=path.split('/').filter(Boolean),folder=p.length>2?p[p.length-2]:'';await idb('blobs','readwrite','put',id,f);state.tracks.push({id:id,title:title(f.name),fileName:f.name,artistIds:[],albumArtistIds:[],albumId:null,album:'',duration:0,explicit:false,lyrics:'',addedAt:Date.now()});if(folder&&!state.albums.some(function(a){return norm(a.title)===norm(folder)}))state.albums.push({id:uid(),title:folder,artistIds:[],cover:null});busy(true,'Adding songs','Saving '+(i+1)+' of '+list.length+': '+f.name,i+1,list.length);await tick()}await save();busy(false);render();toast(list.length+' song'+(list.length===1?'':'s')+' added.')}catch(e){console.error(e);busy(false);toast('Could not save the files. Already-saved songs were kept.')}}
+function rd16(a,o){return(a[o]||0)|((a[o+1]||0)<<8)}
+function rd32(a,o){return(((a[o]||0)|((a[o+1]||0)<<8)|((a[o+2]||0)<<16)|((a[o+3]||0)<<24))>>>0)}
+function rd64(a,o){return rd32(a,o)+rd32(a,o+4)*4294967296}
+function sig(a,o,n){return rd32(a,o)===n}
+function findSig(a,n){for(var i=a.length-4;i>=0;i--)if(sig(a,i,n))return i;return-1}
+async function parseZip(file){
+ var tailSize=Math.min(file.size,1048576),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer()),e=findSig(tail,0x06054b50);
+ if(e<0)throw Error("Invalid Localify preset.");
+ var cds=rd32(tail,e+12),cdo=rd32(tail,e+16),count=rd16(tail,e+10);
+ if(cds===4294967295||cdo===4294967295||count===65535){
+  var base=Math.max(0,e-70000),loc=findSig(tail.slice(base,e),0x07064b50);
+  if(loc<0)throw Error("ZIP64 directory not found.");
+  loc+=base;
+  var zoff=rd64(tail,loc+8),z=new Uint8Array(await file.slice(zoff,zoff+64).arrayBuffer());
+  if(!sig(z,0,0x06064b50))throw Error("Invalid ZIP64 preset.");
+  count=rd64(z,32);cds=rd64(z,40);cdo=rd64(z,48);
+ }
+ if(cdo+cds>file.size)throw Error("Preset directory is outside the file.");
+ var cd=new Uint8Array(await file.slice(cdo,cdo+cds).arrayBuffer()),map=new Map(),p=0;
+ for(var i=0;i<count&&p+46<=cd.length;i++){
+  if(!sig(cd,p,0x02014b50))throw Error("Preset central directory is damaged.");
+  var method=rd16(cd,p+10),cs=rd32(cd,p+20),us=rd32(cd,p+24),fn=rd16(cd,p+28),ex=rd16(cd,p+30),co=rd16(cd,p+32),off=rd32(cd,p+42),name=new TextDecoder().decode(cd.slice(p+46,p+46+fn)),extra=cd.slice(p+46+fn,p+46+fn+ex);
+  if(cs===4294967295||us===4294967295||off===4294967295){
+   var q=0;
+   while(q+4<=extra.length){
+    var eid=rd16(extra,q),len=rd16(extra,q+2);
+    if(eid===1){
+     var z=q+4;
+     if(us===4294967295){us=rd64(extra,z);z+=8}
+     if(cs===4294967295){cs=rd64(extra,z);z+=8}
+     if(off===4294967295)off=rd64(extra,z);
+     break;
+    }
+    q+=4+len;
+   }
+  }
+  map.set(name,{name:name,method:method,size:us,csize:cs,offset:off});
+  p+=46+fn+ex+co;
+ }
+ return map;
+}
+async function entryBlob(file,e){
+ var h=new Uint8Array(await file.slice(e.offset,e.offset+30).arrayBuffer());
+ if(!sig(h,0,0x04034b50))throw Error("Invalid preset entry.");
+ var fn=rd16(h,26),ex=rd16(h,28),start=e.offset+30+fn+ex,raw=file.slice(start,start+e.csize);
+ if(e.method===0)return raw;
+ if(e.method===8&&"DecompressionStream"in window)return new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+ throw Error("This preset uses ZIP compression this browser cannot unpack.");
+}
+function chooseImportMode(name){
+ return new Promise(function(resolve){
+  sheet('<div class="sheetHead"><strong>Import preset</strong><button class="circle" id="cancelPreset"><svg class="i" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><p style="color:#87919c;font-size:11px">'+esc(name||"Localify preset")+'</p><div class="actions"><button class="btn primary" id="setPreset">Set file</button><button class="btn" id="addPreset">Add file</button></div>');
+  $("#setPreset").onclick=function(){closeSheet();resolve("set")};
+  $("#addPreset").onclick=function(){closeSheet();resolve("add")};
+  $("#cancelPreset").onclick=function(){closeSheet();resolve(null)};
+ });
+}
+async function importPreset(file){
+ closeTools();
+ var made=[];
+ busy(true,"Importing preset","Reading the small preset index… your music is not being replaced.",0,1);
+ try{
+  var entries=await parseZip(file),mf=entries.get("library.json");
+  if(!mf)throw Error("This file is missing library.json.");
+  var manifest=JSON.parse(await(await entryBlob(file,mf)).text());
+  if(!manifest||!Array.isArray(manifest.tracks))throw Error("This is not a valid Localify preset.");
+  var mode=await chooseImportMode(manifest.presetName||"Localify preset");
+  if(!mode){busy(false);return}
+  busy(true,"Importing preset","Preparing artists, albums and songs…",0,Math.max(1,manifest.tracks.length));
+  var workArtists=mode==="set"?[]:state.artists.map(function(a){return Object.assign({},a)});
+  var workAlbums=mode==="set"?[]:state.albums.map(function(a){return Object.assign({},a)});
+  var workPlaylists=mode==="set"?[]:state.playlists.map(function(p){return Object.assign({},p,{trackIds:(p.trackIds||[]).slice()})});
+  var artistMap=new Map(workArtists.map(function(a){return[norm(a.name),a.id]}));
+  var albumMap=new Map(workAlbums.map(function(a){return[norm(a.title),a.id]}));
+  var manifestArtistById=new Map((manifest.artists||[]).map(function(a){return[a.id,a]}));
+  var manifestAlbumById=new Map((manifest.albums||[]).map(function(a){return[a.id,a]}));
+  (manifest.artists||[]).forEach(function(a){
+   if(!a||!a.name)return;
+   var key=norm(a.name),id=artistMap.get(key);
+   if(!id){var x=Object.assign({},a,{id:uid()});workArtists.push(x);id=x.id;artistMap.set(key,id)}
+  });
+  (manifest.albums||[]).forEach(function(a){
+   if(!a||!a.title)return;
+   var key=norm(a.title),id=albumMap.get(key);
+   if(!id){var x=Object.assign({},a,{id:uid()});x.artistIds=(a.artistIds||[]).map(function(old){var ma=manifestArtistById.get(old);return ma?artistMap.get(norm(ma.name)):null}).filter(Boolean);x.artistId=x.artistIds[0]||null;workAlbums.push(x);id=x.id;albumMap.set(key,id)}
+  });
+  var oldNew=new Map(),newTracks=[];
+  for(var i=0;i<manifest.tracks.length;i++){
+   var src=manifest.tracks[i];if(!src)continue;
+   var entry=entries.get(src.audioFile)||entries.get(src.id+"__"+String(src.fileName||src.title||"audio"));
+   if(!entry)throw Error("Missing audio data for “"+String(src.title||src.fileName||src.id||"song").slice(0,100)+"”.");
+   var tid=uid(),ma=manifestAlbumById.get(src.albumId),aid=ma?albumMap.get(norm(ma.title))||null:null;
+   var ids=(src.artistIds||[]).map(function(old){var a=manifestArtistById.get(old);return a?artistMap.get(norm(a.name)):null}).filter(Boolean);
+   var blob=await entryBlob(file,entry);
+   await idb("blobs","readwrite","put",tid,blob);
+   made.push(tid);
+   newTracks.push({id:tid,title:src.title||src.fileName||"Untitled",fileName:src.fileName||src.audioFile,artistIds:ids,albumArtistIds:[],albumId:aid,album:ma?ma.title:"",duration:Number(src.duration)||0,explicit:!!src.explicit,lyrics:src.lyrics||"",addedAt:src.addedAt||Date.now(),year:src.year||"",genre:src.genre||"",cover:src.cover||null});
+   oldNew.set(src.id,tid);
+   busy(true,"Importing preset","Saving song "+(i+1)+" of "+manifest.tracks.length+": "+(src.title||src.fileName||"song"),i+1,manifest.tracks.length);
+   await tick();
+  }
+  (manifest.playlists||[]).forEach(function(p){
+   var mapped=(p.trackIds||[]).map(function(x){return oldNew.get(x)}).filter(Boolean);
+   var ex=workPlaylists.find(function(x){return norm(x.name)===norm(p.name)});
+   if(ex)ex.trackIds=mapped;else workPlaylists.push(Object.assign({},p,{id:uid(),trackIds:mapped}));
+  });
+  var newLiked=(manifest.liked||[]).map(function(x){return oldNew.get(x)}).filter(Boolean);
+  var newRecent=(manifest.recent||[]).map(function(x){return oldNew.get(x)}).filter(Boolean);
+  if(mode==="set"){
+   state.tracks=newTracks;state.artists=workArtists;state.albums=workAlbums;state.playlists=workPlaylists;state.liked=newLiked;state.recent=newRecent;state.queue=[];state.queueIndex=0;state.currentId=null;
+  }else{
+   state.tracks=state.tracks.concat(newTracks);state.artists=workArtists;state.albums=workAlbums;state.playlists=workPlaylists;
+   state.liked=state.liked.concat(newLiked.filter(function(x){return state.liked.indexOf(x)<0}));
+   state.recent=newRecent.concat(state.recent.filter(function(x){return newRecent.indexOf(x)<0})).slice(0,100);
+  }
+  await save();busy(false);render();toast("Preset imported successfully — "+newTracks.length+" songs saved.");
+ }catch(e){
+  console.error("Localify preset import failed",e);
+  for(var j=0;j<made.length;j++)try{await idb("blobs","readwrite","delete",made[j])}catch(_){}
+  busy(false);toast("Preset import failed: "+(e.message||"unknown error"));
+ }
+}
 function songMenu(id){var t=track(id);sheet('<div class="sheetHead"><strong>'+esc(title(t.fileName||t.title))+'</strong><button class="circle" data-action="close-sheet"><svg class="i" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div><div class="actions"><button class="btn" data-action="queue-one" data-id="'+id+'">Add to queue</button><button class="btn" data-action="like" data-id="'+id+'">'+(state.liked.indexOf(id)>=0?'Unlike':'Like')+'</button><button class="btn" data-action="edit-track" data-id="'+id+'">Edit song</button><button class="btn" data-action="save-one" data-id="'+id+'">Save preset</button><button class="btn" data-action="download" data-id="'+id+'">Download</button><button class="btn danger" data-action="remove" data-id="'+id+'">Remove</button></div>')}
 function download(id){var t=track(id);idb('blobs','readonly','get',id).then(function(b){if(!(b instanceof Blob)){toast('This song is not saved on this device.');return}var a=document.createElement('a'),u=URL.createObjectURL(b);a.href=u;a.download=((artists(t)!=='None'?artists(t)+' - ':'')+title(t.fileName||t.title)).replace(/[\\/:*?"<>|]+/g,'-')+(t.fileName&&t.fileName.match(/\.[^.]+$/)||['.mp3'])[0];document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1500)})}
 function crc32(b){var c=4294967295;for(var i=0;i<b.length;i++){var x=(c^b[i])&255;c=(crc32.t[x]^(c>>>8))>>>0}return(c^4294967295)>>>0}crc32.t=(function(){var t=new Uint32Array(256);for(var n=0;n<256;n++){var c=n;for(var k=0;k<8;k++)c=(c>>>1)^(c&1?3988292384:0);t[n]=c>>>0}return t})();
@@ -128,8 +250,7 @@ $$('.nav [data-view]').forEach(function(b){b.addEventListener('click',function()
 $('#search').addEventListener('input',function(e){q=e.target.value;view=q.trim()?'search':view==='search'?'home':view;render()});
 $('#audioPicker').addEventListener('change',function(e){var aid=this.dataset.album||'';files(e.target.files).then(function(){if(aid){var al=album(aid),n=e.target.files.length;state.tracks.slice(-n).forEach(function(t){t.albumId=al.id;t.album=al.title});save();render()}});this.value='';this.dataset.album=''});
 $('#folderPicker').addEventListener('change',function(e){files(e.target.files);this.value=''});
-$('#presetPicker').addEventListener('change',function(e){toast('Preset import is available in the full Localify web build.');this.value=''});
-audio.addEventListener('timeupdate',function(){var d=audio.duration||0,c=audio.currentTime||0;$('#progressBar').style.width=d?c/d*100+'%':'0%';$('#seek').value=d?c/d*1000:0;$('#cur').textContent=fmt(c);$('#dur').textContent=fmt(d)});$('#seek').addEventListener('input',function(){if(audio.duration)audio.currentTime=Number(this.value)/1000*audio.duration});audio.addEventListener('play',render);audio.addEventListener('pause',render);audio.addEventListener('ended',next);
+$('#presetPicker').addEventListener('change',function(e){var f=e.target.files[0];this.value='';if(f)importPreset(f)});
 document.addEventListener('click',function(e){if(!e.target.closest('#tools')&&!e.target.closest('[data-action="tools"]'))closeTools()});
 (async function(){try{await openDB();await persistent();await restore();await covers();render()}catch(e){console.error(e);toast('Local storage could not be opened. Use a preset backup.');render()}})();
 function persistent(){try{return navigator.storage&&navigator.storage.persist?navigator.storage.persist():Promise.resolve()}catch(e){return Promise.resolve()}}

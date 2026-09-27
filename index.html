@@ -63,8 +63,18 @@ try{
   if("serviceWorker" in navigator){
     navigator.serviceWorker.getRegistrations().then(function(regs){
       if(!regs.length)return;
+      var hadController=!!navigator.serviceWorker.controller;
       return Promise.all(regs.map(function(r){return r.unregister().catch(function(){return false})})).then(function(){
-        if("caches" in window)return caches.keys().then(function(keys){return Promise.all(keys.filter(function(k){return /^localify-mobile-/i.test(k)}).map(function(k){return caches.delete(k)}))});
+        if("caches" in window)return caches.keys().then(function(keys){
+          return Promise.all(keys.filter(function(k){return /^localify-mobile-/i.test(k)}).map(function(k){return caches.delete(k)}));
+        });
+      }).then(function(){
+        try{
+          if(hadController&&sessionStorage.getItem("localify-mobile-shell-reset")!=="1"){
+            sessionStorage.setItem("localify-mobile-shell-reset","1");
+            location.reload();
+          }
+        }catch(e){}
       });
     }).catch(function(){});
   }
@@ -304,9 +314,7 @@ function render(){
 }
 function home(){
  var r=state.recent.map(track).filter(Boolean).slice(0,8),a=state.albums.slice(0,8);
- $('#page').innerHTML='<section class="hero"><small>LOCALIFY MOBILE</small><h2>Your music.<br>Made for your phone.</h2><p>Local-first playback with mobile importing, presets and persistent storage.</p><div class="actions"><button type="button" class="btn primary" id="homeAddSongs" title="Add songs"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add songs</button><button type="button" class="btn" id="homeAddFolder" title="Add folder"><svg class="i" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Add folder</button></div></section>'+sec('Recently played',r.length?'<div class="grid">'+r.map(tc).join('')+'</div>':emp('Nothing played yet','Play something and it will appear here.'),r.length)+sec('Albums',a.length?'<div class="grid">'+a.map(ac).join('')+'</div>':emp('No albums yet','Import music or create an album.'),a.length);
- $('#homeAddSongs').addEventListener('click',function(){try{$('#audioPicker').click()}catch(e){console.error(e);toast('File picker could not be opened.')}} ,{passive:true});
- $('#homeAddFolder').addEventListener('click',function(){try{$('#folderPicker').click()}catch(e){console.error(e);toast('Folder picker could not be opened.')}} ,{passive:true});
+ $('#page').innerHTML='<section class="hero"><small>LOCALIFY MOBILE</small><h2>Your music.<br>Made for your phone.</h2><p>Local-first playback with mobile importing, presets and persistent storage.</p><div class="actions"><label class="btn primary" for="audioPicker" id="homeAddSongs" title="Add songs"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add songs</label><label class="btn" for="folderPicker" id="homeAddFolder" title="Add folder"><svg class="i" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Add folder</label></div></section>'+sec('Recently played',r.length?'<div class="grid">'+r.map(tc).join('')+'</div>':emp('Nothing played yet','Play something and it will appear here.'),r.length)+sec('Albums',a.length?'<div class="grid">'+a.map(ac).join('')+'</div>':emp('No albums yet','Import music or create an album.'),a.length);
 }
 function filt(s){return s?state.tracks.filter(function(t){return(title(t.fileName||t.title)+' '+artists(t)+' '+albumName(t)).toLowerCase().indexOf(s)>=0}):state.tracks}
 function search(s){var t=filt(s),a=s?state.albums.filter(function(x){return x.title.toLowerCase().indexOf(s)>=0}):state.albums,r=s?state.artists.filter(function(x){return x.name.toLowerCase().indexOf(s)>=0}):state.artists;$('#page').innerHTML='<div class="head"><div><h1>Search</h1><p>'+esc(s?t.length+' songs • '+a.length+' albums • '+r.length+' artists':'Search your local catalog')+'</p></div></div>'+sec('Songs',t.length?'<div class="list">'+t.map(row).join('')+'</div>':emp('No songs found','Try another search.'),t.length)+sec('Albums',a.length?'<div class="grid">'+a.map(ac).join('')+'</div>':emp('No albums found',''),a.length)+sec('Artists',r.length?'<div class="grid">'+r.map(ar).join('')+'</div>':emp('No artists found',''),r.length)}

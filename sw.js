@@ -1,4 +1,4 @@
-const CACHE="localify-mobile-v9";
+const CACHE="localify-mobile-v10";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{

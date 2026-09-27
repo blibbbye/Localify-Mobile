@@ -2523,19 +2523,6 @@ button,a,input,select,textarea{touch-action:manipulation;-webkit-tap-highlight-c
     window.addEventListener("unhandledrejection",e=>{console.warn("Localify unhandled promise rejection",e.reason);e.preventDefault()});
   window.addEventListener("error",e=>{console.warn("Localify runtime error",e.error||e.message)});
 
-  function closeMobileTools(){
-    const panel=$("#libraryToolsMobile");
-    if(panel)panel.classList.remove("open"),panel.setAttribute("aria-hidden","true");
-    $("#mobileLibraryTools")?.setAttribute("aria-expanded","false");
-  }
-  function toggleMobileTools(){
-    const panel=$("#libraryToolsMobile");
-    if(!panel)return;
-    const open=!panel.classList.contains("open");
-    panel.classList.toggle("open",open);
-    panel.setAttribute("aria-hidden",open?"false":"true");
-    $("#mobileLibraryTools")?.setAttribute("aria-expanded",open?"true":"false");
-  }
   $("#mobileLibraryTools")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();toggleMobileTools()});
   $$("[data-mobile-tool]").forEach(b=>b.addEventListener("click",e=>{
     e.preventDefault();e.stopPropagation();
@@ -3334,7 +3321,23 @@ button,a,input,select,textarea{touch-action:manipulation;-webkit-tap-highlight-c
     $("#presetExportAlbumsBtn").onclick=()=>{closeModal(true);openPresetExportSelection("albums")};
     $("#presetImportAlbumsBtn").onclick=()=>{closeModal(true);pickPresetFile("albums")};
   }
-  function openMobileTools(){openPresetsMenu()}
+  function openMobileTools(){toggleMobileTools()}
+
+  function toggleMobileTools(){
+    const panel=$("#libraryToolsMobile");
+    const button=$("#mobileLibraryTools");
+    if(!panel)return;
+    const open=!panel.classList.contains("open");
+    panel.classList.toggle("open",open);
+    panel.setAttribute("aria-hidden",open?"false":"true");
+    if(button)button.setAttribute("aria-expanded",open?"true":"false");
+  }
+  function closeMobileTools(){
+    const panel=$("#libraryToolsMobile");
+    const button=$("#mobileLibraryTools");
+    if(panel)panel.classList.remove("open"),panel.setAttribute("aria-hidden","true");
+    if(button)button.setAttribute("aria-expanded","false");
+  }
 
   async function unlockPersistentStorage(){await ensureStorageAccess();try{if(navigator.storage?.persist)await navigator.storage.persist()}catch{};try{await openDB();storageReady=true;storageBlocked=false;toast("Persistent library storage is enabled.")}catch{storageBlocked=true;writeMetaFallback();toast("Your browser/Google Sites embed is blocking persistent storage. Open Localify as its own site for automatic saving.")}}
 
@@ -3392,11 +3395,11 @@ button,a,input,select,textarea{touch-action:manipulation;-webkit-tap-highlight-c
   $("#modal").addEventListener("input",markDirty);
   document.addEventListener("click",e=>{
     const hero=e.target.closest?.("#heroAdd");
-    if(hero){e.preventDefault();pickFiles({});}
+    if(hero){e.preventDefault();e.stopPropagation();pickFiles({});return;}
     const lib=e.target.closest?.("#libraryAdd");
-    if(lib){e.preventDefault();pickFiles({});}
+    if(lib){e.preventDefault();e.stopPropagation();pickFiles({});return;}
     const tools=e.target.closest?.("#mobileLibraryTools");
-    if(tools){e.preventDefault();e.stopPropagation();toggleMobileTools();}
+    if(tools){e.preventDefault();e.stopPropagation();toggleMobileTools();return;}
   },true);
 
   document.addEventListener("click",e=>{

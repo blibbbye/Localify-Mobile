@@ -2634,8 +2634,8 @@ button,a,input,select,textarea{touch-action:manipulation;-webkit-tap-highlight-c
       const btn=wrap.querySelector(".artistSelectButton"),menu=wrap.querySelector(".artistPickerMenu");
       if(!btn||!menu)return;
       btn.onclick=e=>{e.preventDefault();e.stopPropagation();$$(".artistPickerWrap.open").forEach(x=>{if(x!==wrap){x.classList.remove("open");x.querySelector(".artistSelectButton")?.setAttribute("aria-expanded","false")}});const open=!wrap.classList.contains("open");wrap.classList.toggle("open",open);btn.setAttribute("aria-expanded",String(open));if(open)setTimeout(()=>wrap.scrollIntoView({block:"nearest",inline:"nearest"}),0)};
-      $$('input[type="checkbox"]',wrap).forEach(input=>input.addEventListener("change",()=>{
-        if(input.value==="__none__"&&input.checked)$$('input[type="checkbox"]',wrap).forEach(x=>{if(x!==input)x.checked=false});
+      $wrap.querySelectorAll('input[type="checkbox"]').forEach(input=>input.addEventListener("change",()=>{
+        if(input.value==="__none__"&&input.checked)$wrap.querySelectorAll('input[type="checkbox"]').forEach(x=>{if(x!==input)x.checked=false});
         else if(input.value!=="__none__"&&input.checked){const none=wrap.querySelector('input[value="__none__"]');if(none)none.checked=false}
         if(!wrap.querySelector('input[type="checkbox"]:checked')){const none=wrap.querySelector('input[value="__none__"]');if(none)none.checked=true}
         syncArtistPickerSummary(wrap);

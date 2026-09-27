@@ -1,20 +1,52 @@
-// Localify Mobile no longer uses a service worker.
-// This file intentionally unregisters itself and clears any old app-shell
-// caches left by previous versions, without touching IndexedDB/library data.
-self.addEventListener("install",function(event){
-  event.waitUntil(self.skipWaiting());
-});
-self.addEventListener("activate",function(event){
+const CACHE="localify-mobile-v13";
+const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
+
+self.addEventListener("install",event=>{
   event.waitUntil(
-    caches.keys()
-      .then(function(keys){
-        return Promise.all(keys.filter(function(k){return /^localify-mobile-/i.test(k)}).map(function(k){return caches.delete(k)}));
-      })
-      .then(function(){return self.registration.unregister()})
-      .then(function(){return self.clients.claim()})
+    caches.open(CACHE)
+      .then(cache=>cache.addAll(CORE))
+      .then(()=>self.skipWaiting())
   );
 });
-self.addEventListener("fetch",function(event){
-  // Do not intercept requests. The website should always use the live page.
-  return;
+
+self.addEventListener("activate",event=>{
+  event.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+      .then(()=>self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch",event=>{
+  const req=event.request;
+  if(req.method!=="GET")return;
+  const url=new URL(req.url);
+
+  // Always prefer the network for the app shell so a broken cached index
+  // cannot keep the phone version stuck on an old release.
+  if(req.mode==="navigate" || url.pathname.endsWith("/index.html")){
+    event.respondWith(
+      fetch(req,{cache:"no-store"})
+        .then(res=>{
+          const copy=res.clone();
+          caches.open(CACHE).then(cache=>cache.put("./index.html",copy)).catch(()=>{});
+          return res;
+        })
+        .catch(()=>caches.match("./index.html"))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(req).then(cached=>{
+      if(cached)return cached;
+      return fetch(req).then(res=>{
+        if(url.origin===location.origin){
+          const copy=res.clone();
+          caches.open(CACHE).then(cache=>cache.put(req,copy)).catch(()=>{});
+        }
+        return res;
+      }).catch(()=>cached);
+    })
+  );
 });

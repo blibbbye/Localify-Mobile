@@ -121,6 +121,8 @@ function rd64(a,o){return rd32(a,o)+rd32(a,o+4)*4294967296}
 function sig(a,o,n){return rd32(a,o)===n}
 function findSig(a,n){for(var i=a.length-4;i>=0;i--)if(sig(a,i,n))return i;return-1}
 async function parseZip(file){
+ busy(true,"Reading preset","Locating the preset index…",0,1);
+ await tick();
  var tailSize=Math.min(file.size,1048576),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer()),e=findSig(tail,0x06054b50);
  if(e<0)throw Error("Invalid Localify preset.");
  var cds=rd32(tail,e+12),cdo=rd32(tail,e+16),count=rd16(tail,e+10);
@@ -135,6 +137,8 @@ async function parseZip(file){
  if(cdo+cds>file.size)throw Error("Preset directory is outside the file.");
  var cd=new Uint8Array(await file.slice(cdo,cdo+cds).arrayBuffer()),map=new Map(),p=0;
  for(var i=0;i<count&&p+46<=cd.length;i++){
+  if(i===0)busy(true,"Reading preset","Reading the preset index…",0,count||1);
+  if(i%1000===0&&i>0){busy(true,"Reading preset","Reading the preset index… "+i.toLocaleString()+" of "+count.toLocaleString(),i,count||1);await tick();}
   if(!sig(cd,p,0x02014b50))throw Error("Preset central directory is damaged.");
   var method=rd16(cd,p+10),cs=rd32(cd,p+20),us=rd32(cd,p+24),fn=rd16(cd,p+28),ex=rd16(cd,p+30),co=rd16(cd,p+32),off=rd32(cd,p+42),name=new TextDecoder().decode(cd.slice(p+46,p+46+fn)),extra=cd.slice(p+46+fn,p+46+fn+ex);
   if(cs===4294967295||us===4294967295||off===4294967295){
@@ -154,6 +158,8 @@ async function parseZip(file){
   map.set(name,{name:name,method:method,size:us,csize:cs,offset:off});
   p+=46+fn+ex+co;
  }
+ busy(true,"Reading preset","Preset index loaded. Preparing import choices…",count||1,count||1);
+ await tick();
  return map;
 }
 async function entryBlob(file,e){
@@ -175,14 +181,24 @@ function chooseImportMode(name){
 async function importPreset(file){
  closeTools();
  var made=[];
- busy(true,"Importing preset","Reading the small preset index… your music is not being replaced.",0,1);
+ busy(true,"Reading preset","Reading the small preset index… your music is NOT being replaced.",0,1);
  try{
+  await tick();
   var entries=await parseZip(file),mf=entries.get("library.json");
   if(!mf)throw Error("This file is missing library.json.");
+  busy(true,"Reading preset","Loading the library index…",0,1);
+  await tick();
   var manifest=JSON.parse(await(await entryBlob(file,mf)).text());
   if(!manifest||!Array.isArray(manifest.tracks))throw Error("This is not a valid Localify preset.");
+
+  /* Do not leave the loading overlay over the Add/Set choice sheet.
+     The existing library is still untouched at this point. */
+  busy(false);
+  await tick();
   var mode=await chooseImportMode(manifest.presetName||"Localify preset");
   if(!mode){busy(false);return}
+  busy(true,"Importing preset",mode==="set"?"Set file selected — preparing replacement…":"Add file selected — preparing import…",0,Math.max(1,manifest.tracks.length));
+  await tick();
   busy(true,"Importing preset","Preparing artists, albums and songs…",0,Math.max(1,manifest.tracks.length));
   var workArtists=mode==="set"?[]:state.artists.map(function(a){return Object.assign({},a)});
   var workAlbums=mode==="set"?[]:state.albums.map(function(a){return Object.assign({},a)});

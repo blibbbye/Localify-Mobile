@@ -57,6 +57,19 @@ button,.btn,.circle,.tool{touch-action:manipulation;-webkit-user-select:none;use
 <script>
 (function(){
 'use strict';
+/* One-time shell cleanup for phones that still have an older broken cached
+   Localify-Mobile page. This does not touch IndexedDB or library data. */
+try{
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      if(!regs.length)return;
+      return Promise.all(regs.map(function(r){return r.unregister().catch(function(){return false})})).then(function(){
+        if("caches" in window)return caches.keys().then(function(keys){return Promise.all(keys.filter(function(k){return /^localify-mobile-/i.test(k)}).map(function(k){return caches.delete(k)}))});
+      });
+    }).catch(function(){});
+  }
+}catch(e){}
+
 var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
 var audio=$('#audio'),DB='localify-persistent-v10',META='localify-persistent-meta-v10',BACKUP='localify-persistent-meta-backup-v1',RAW='https://raw.githubusercontent.com/blibbbye/Localify/main/',COVERS=RAW+'covers.json',COVER_DIR='https://api.github.com/repos/blibbbye/Localify/contents/covers?ref=main';
 var db=null,view='home',q='',coverMap={},coverFiles={},coverPromise=null,url='',saveTimer=0,toastTimer=0;
@@ -113,7 +126,13 @@ function openDB(){
 function idb(st,mode,m,id,v,retries){
  retries=retries==null?2:retries;
  return new Promise(function(res,rej){
-  var tx,o,r,settled=false;
+  var tx,o,r,settled=false,resultValue;
+  function retryOrReject(e){
+   if(settled)return;
+   settled=true;closeDB();
+   if(retries>0)openDB().then(function(){idb(st,mode,m,id,v,retries-1).then(res,rej)},rej);
+   else rej(e);
+  }
   try{
    if(!db)throw Error('IndexedDB connection is unavailable');
    tx=db.transaction(st,mode);
@@ -121,17 +140,14 @@ function idb(st,mode,m,id,v,retries){
    if(m==='get')r=o.get(id);
    else if(m==='put'){
     var value=v instanceof File?v.slice(0,v.size,v.type):v;
-    // All Localify stores use out-of-line keys (no keyPath/key generator).
-    // Always pass the explicit key, especially for large preset imports.
     r=o.put(value,id);
    }else r=o.delete(id);
-   r.onsuccess=function(){if(!settled){settled=true;res(r.result)}};
-   r.onerror=function(){if(!settled){settled=true;rej(r.error||Error('Storage failed'))}};
-   tx.onerror=function(){if(!settled){settled=true;var e=tx.error||Error('Storage transaction failed');closeDB();if(retries>0)openDB().then(function(){idb(st,mode,m,id,v,retries-1).then(res,rej)},rej);else rej(e)}};
-   tx.onabort=function(){if(!settled){settled=true;var e=tx.error||Error('Storage transaction aborted');closeDB();if(retries>0)openDB().then(function(){idb(st,mode,m,id,v,retries-1).then(res,rej)},rej);else rej(e)}};
-  }catch(e){
-   if(retries>0){closeDB();openDB().then(function(){idb(st,mode,m,id,v,retries-1).then(res,rej)},rej)}else rej(e);
-  }
+   r.onsuccess=function(){resultValue=r.result;};
+   r.onerror=function(){retryOrReject(r.error||Error('Storage request failed'));};
+   tx.oncomplete=function(){if(!settled){settled=true;res(resultValue);}};
+   tx.onerror=function(){retryOrReject(tx.error||Error('Storage transaction failed'));};
+   tx.onabort=function(){retryOrReject(tx.error||Error('Storage transaction aborted'));};
+  }catch(e){retryOrReject(e)}
  })
 }
 var AUDIO_CHUNK_SIZE=2*1024*1024;
@@ -517,9 +533,21 @@ setTimeout(function(){try{if(!$('#page').children.length){busy(false);closeSheet
 window.addEventListener('pagehide',function(){try{if(saveTimer){clearTimeout(saveTimer);save()}else save()}catch(_){} });
 function persistent(){try{return navigator.storage&&navigator.storage.persist?navigator.storage.persist():Promise.resolve()}catch(e){return Promise.resolve()}}
 })();
+  /* Mobile web should not keep an old service-worker shell around.
+     Older Localify-Mobile versions used a cache that could leave a stale page
+     where every button appeared dead. Remove those registrations once, then
+     keep this site network-first. */
   try{
     if("serviceWorker" in navigator){
-      navigator.serviceWorker.register("./sw.js?v=17",{updateViaCache:"none"}).then(function(r){return r.update()}).catch(function(){});
+      navigator.serviceWorker.getRegistrations().then(function(regs){
+        return Promise.all(regs.map(function(r){return r.unregister().catch(function(){return false})})).then(function(){
+          if("caches" in window){
+            return caches.keys().then(function(keys){
+              return Promise.all(keys.filter(function(k){return /^localify-mobile-/i.test(k)}).map(function(k){return caches.delete(k)}));
+            });
+          }
+        });
+      }).catch(function(){});
     }
   }catch(e){}
 </script>

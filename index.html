@@ -328,5 +328,10 @@ document.addEventListener('click',function(e){if(!e.target.closest('#tools')&&!e
 (async function(){try{await openDB();await persistent();await restore();await covers();render()}catch(e){console.error(e);toast('Local storage could not be opened. Use a preset backup.');render()}})();
 function persistent(){try{return navigator.storage&&navigator.storage.persist?navigator.storage.persist():Promise.resolve()}catch(e){return Promise.resolve()}}
 })();
+  try{
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(function(r){return r.update()}).catch(function(){});
+    }
+  }catch(e){}
 </script>
 </body></html>

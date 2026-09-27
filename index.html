@@ -104,14 +104,20 @@ function openDB(){
  })
 }
 function idb(st,mode,m,id,v,retries){
- retries=retries==null?1:retries;
+ retries=retries==null?2:retries;
  return new Promise(function(res,rej){
   var tx,o,r,settled=false;
   try{
    if(!db)throw Error('IndexedDB connection is unavailable');
    tx=db.transaction(st,mode);
    o=tx.objectStore(st);
-   r=m==='get'?o.get(id):m==='put'?o.put(v instanceof File?v.slice(0,v.size,v.type):v):o.delete(id);
+   if(m==='get')r=o.get(id);
+   else if(m==='put'){
+    var value=v instanceof File?v.slice(0,v.size,v.type):v;
+    // All Localify stores use out-of-line keys (no keyPath/key generator).
+    // Always pass the explicit key, especially for large preset imports.
+    r=o.put(value,id);
+   }else r=o.delete(id);
    r.onsuccess=function(){if(!settled){settled=true;res(r.result)}};
    r.onerror=function(){if(!settled){settled=true;rej(r.error||Error('Storage failed'))}};
    tx.onerror=function(){if(!settled){settled=true;var e=tx.error||Error('Storage transaction failed');closeDB();if(retries>0)openDB().then(function(){idb(st,mode,m,id,v,retries-1).then(res,rej)},rej);else rej(e)}};
@@ -230,7 +236,7 @@ async function importPreset(file){
  var made=[];
  importCancelled=false;
  setBusyCancel(function(){importCancelled=true});
- busy(true,"Reading preset","Reading the small preset index… your music is NOT being replaced.",0,1,true);
+ busy(true,"Importing preset","Reading the preset index… large files can take a while. Your existing library is NOT being replaced.",0,1,true);
  try{
   await tick();
   var entries=await parseZip(file),mf=entries.get("library.json");
@@ -251,7 +257,7 @@ async function importPreset(file){
   await tick();
   var mode=await chooseImportMode(manifest.presetName||"Localify preset");
   if(!mode){busy(false);return}
-  busy(true,"Importing preset",mode==="set"?"Set file selected — preparing replacement…":"Add file selected — preparing import…",0,Math.max(1,manifest.tracks.length));
+  busy(true,"Importing preset",mode==="set"?"Set file selected — saving songs to this phone…":"Add file selected — saving songs to this phone…",0,Math.max(1,manifest.tracks.length));
   await tick();
   busy(true,"Importing preset","Preparing artists, albums and songs…",0,Math.max(1,manifest.tracks.length));
   var workArtists=mode==="set"?[]:state.artists.map(function(a){return Object.assign({},a)});

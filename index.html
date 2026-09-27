@@ -498,21 +498,28 @@ $('#presetPicker').addEventListener('change',function(e){var f=e.target.files[0]
 document.addEventListener('click',function(e){if(!e.target.closest('#tools')&&!e.target.closest('[data-action="tools"]'))closeTools()});
 (async function(){try{
  busy(false);closeSheet();closeTools();try{audio.pause();audio.removeAttribute('src');audio.load()}catch(e){}
+ // Render immediately so the UI is usable even when IndexedDB on iPhone is slow.
+ normalizeStateData();render();
  try{await openDB()}catch(e){console.warn('Localify continuing with backup/local storage:',e)}
- await persistent();await restore();normalizeStateData();busy(false);render();
+ try{await persistent()}catch(e){console.warn('Localify persistence request failed:',e)}
+ try{await restore()}catch(e){console.warn('Localify restore failed; keeping current library state:',e)}
+ normalizeStateData();busy(false);render();
  covers().then(function(){render()}).catch(function(){});
 }catch(e){
- console.error('Localify startup error',e);normalizeStateData();busy(false);closeSheet();closeTools();render();toast('Localify opened in recovery mode. Your saved library was kept.');
+ console.error('Localify startup error',e);
+ try{normalizeStateData();busy(false);closeSheet();closeTools();render();toast('Localify recovery mode: your saved library was kept.')}catch(_){}
 }}
 )();
 window.addEventListener('error',function(e){console.error('Localify runtime error',e.error||e.message);busy(false);closeSheet();closeTools();});
-window.addEventListener('unhandledrejection',function(){if($('#busy')&&!$('#busy').classList.contains('open'))return;busy(false);});window.addEventListener('pageshow',function(e){if(e.persisted){try{audio.pause();audio.removeAttribute('src');audio.load()}catch(_){ }closeSheet();closeTools();$('#full').classList.remove('open');state.currentId=null;render()}});
+window.addEventListener('unhandledrejection',function(e){console.error('Localify promise error',e.reason||e);if($('#busy'))busy(false);});
+window.addEventListener('load',function(){try{busy(false);closeTools();render()}catch(e){console.error('Localify final UI refresh failed',e)}});
+setTimeout(function(){try{if(!$('#page').children.length){busy(false);closeSheet();closeTools();normalizeStateData();render()}}catch(e){}},5000);window.addEventListener('pageshow',function(e){if(e.persisted){try{audio.pause();audio.removeAttribute('src');audio.load()}catch(_){ }closeSheet();closeTools();$('#full').classList.remove('open');state.currentId=null;render()}});
 window.addEventListener('pagehide',function(){try{if(saveTimer){clearTimeout(saveTimer);save()}else save()}catch(_){} });
 function persistent(){try{return navigator.storage&&navigator.storage.persist?navigator.storage.persist():Promise.resolve()}catch(e){return Promise.resolve()}}
 })();
   try{
     if("serviceWorker" in navigator){
-      navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(function(r){return r.update()}).catch(function(){});
+      navigator.serviceWorker.register("./sw.js?v=17",{updateViaCache:"none"}).then(function(r){return r.update()}).catch(function(){});
     }
   }catch(e){}
 </script>

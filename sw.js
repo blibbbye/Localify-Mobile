@@ -1,4 +1,4 @@
-const CACHE="localify-mobile-v16";
+const CACHE="localify-mobile-v17";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{
@@ -22,8 +22,7 @@ self.addEventListener("fetch",event=>{
   if(req.method!=="GET")return;
   const url=new URL(req.url);
 
-  // Always prefer the network for the app shell so a broken cached index
-  // cannot keep the phone version stuck on an old release.
+  // Always prefer a fresh app shell. The cache is only a fallback when offline.
   if(req.mode==="navigate" || url.pathname.endsWith("/index.html")){
     event.respondWith(
       fetch(req,{cache:"no-store"})

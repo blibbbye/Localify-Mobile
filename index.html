@@ -56,13 +56,26 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 .storageMeter{height:7px;border-radius:99px;background:#202932;overflow:hidden;margin-top:8px}.storageMeter div{height:100%;background:var(--accent);width:0}
 @media (min-width:700px){main{padding-left:18px;padding-right:18px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.nav{grid-template-columns:repeat(6,1fr)}.nav button{font-size:10px}.player{grid-template-columns:minmax(0,1fr) auto}.detailHero{grid-template-columns:180px minmax(0,1fr)}.detailArt{width:180px;height:180px}}
 @media (max-width:430px){.detailHero{grid-template-columns:94px minmax(0,1fr)}.detailArt{width:94px;height:94px}.detailTitle{font-size:22px}.hero h2{font-size:33px}}
+/* Mobile interaction safety */
+.sheetShade:not(.open),.modalShade:not(.open),.busyShade:not(.open){pointer-events:none!important}
+.sheetShade.open,.modalShade.open,.busyShade.open{pointer-events:auto}
+.btn.icon,.circle,.sheetItem,.nav button{justify-content:center;align-items:center}
+.btn.icon .i,.circle .i,.sheetItem .i{margin:0;flex:none}
+.brandText{align-items:flex-end}
+.brandText strong{white-space:nowrap}
+@media(max-width:430px){
+ .top{grid-template-columns:minmax(0,1fr) auto}
+ .brand{gap:6px}.brand img{width:32px;height:32px}
+ .brandText strong{font-size:12px}
+ .nav button span{white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis}
+}
 </style>
 </head>
 <body>
 <div class="app">
 <header class="top">
   <div class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="search" type="search" placeholder="Search your music"></div>
-  <div class="brand"><div class="brandText"><strong>Localify Mobile</strong><small>LOCAL MUSIC</small></div><img src="./icon.svg" alt="Localify"></div>
+  <div class="brand"><div class="brandText"><strong>Localify Mobile</strong></div><img src="./icon.svg" alt="Localify"></div>
 </header>
 <main id="main"></main>
 <nav class="nav" id="nav"></nav>
@@ -128,6 +141,13 @@ function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("sh
 function busyShow(title,text){busy=true;$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";$("#busyShade").classList.add("open")}
 function busyUpdate(title,text){$("#busyTitle").textContent=title;$("#busyText").textContent=text}
 function busyHide(){busy=false;$("#busyShade").classList.remove("open")}
+function openFilePicker(input){
+ if(!input)return;
+ try{
+  if(typeof input.showPicker==="function"){input.showPicker();return}
+ }catch(e){}
+ input.click();
+}
 function openDB(){
  return new Promise((resolve,reject)=>{
   const r=indexedDB.open(DB_NAME,DB_VER);
@@ -203,8 +223,25 @@ function coverCandidates(name){
  return [...new Set(a)];
 }
 async function loadCoverMap(){
- if(coverMap)return coverMap;if(coverPromise)return coverPromise;
- coverPromise=(async()=>{const out={};try{const r=await fetch(COVER_MAP_URL,{cache:"no-store"});if(r.ok){const d=await r.json();const raw=d&&typeof d.covers==="object"?d.covers:d;if(raw&&typeof raw==="object")Object.assign(out,raw)}}catch(e){console.warn("covers.json unavailable",e)}coverMap=out;return out})();return coverPromise;
+ if(coverMap)return coverMap;
+ if(coverPromise)return coverPromise;
+ coverPromise=(async()=>{
+  const out={};
+  const controller=typeof AbortController==="function"?new AbortController():null;
+  const timer=controller?setTimeout(()=>controller.abort(),3500):0;
+  try{
+   const r=await fetch(COVER_MAP_URL,{cache:"no-store",signal:controller?.signal||undefined,credentials:"omit"});
+   if(r.ok){
+    const d=await r.json();
+    const raw=d&&typeof d.covers==="object"?d.covers:d;
+    if(raw&&typeof raw==="object"&&!Array.isArray(raw))Object.assign(out,raw);
+   }
+  }catch(e){console.warn("covers.json unavailable",e)}
+  if(timer)clearTimeout(timer);
+  coverMap=out;
+  return out;
+ })();
+ return coverPromise;
 }
 function coverUrlFromValue(v){if(!v)return "";try{if(/^https?:\/\//i.test(v))return v;return new URL(String(v).replace(/^\/+/,""),"https://raw.githubusercontent.com/blibbbye/Localify/main/").href}catch{return ""}}
 async function findCover(t){
@@ -244,8 +281,8 @@ function tracksForAlbum(id){return state.tracks.filter(t=>t.albumId===id)}
 function tracksForArtist(id){return state.tracks.filter(t=>Array.isArray(t.artistIds)&&t.artistIds.includes(id))}
 function tracksForPlaylist(p){return (p?.trackIds||[]).map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean)}
 function navHtml(){
- const items=[["home","Home","home"],["search","Search","search"],["library","Library","library"],["albums","Albums","albums"],["more","More","more"]];
- return items.map(x=>'<button data-view="'+x[0]+'" class="'+(state.view===x[0]?"active":"")+'">'+icon(x[2])+'<span>'+x[1]+'</span></button>').join("");
+ const items=[["home","Home","home"],["search","Search","search"],["library","Library","library"],["albums","Albums","albums"],["more","Tools","more"]];
+ return items.map(x=>'<button type="button" data-view="'+x[0]+'" class="'+(state.view===x[0]?"active":"")+'" aria-label="'+x[1]+'">'+icon(x[2])+'<span>'+x[1]+'</span></button>').join("");
 }
 function songRow(t){
  const playing=t.id===state.currentId&&!audio.paused;
@@ -273,7 +310,7 @@ function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,8);
  const albums=state.albums.slice(0,8);
  $("#main").innerHTML=
- '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><button class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
+ '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>';
  bindCovers();
@@ -493,7 +530,7 @@ async function zipEntryBlob(file,e){
 }
 async function importPreset(file){
  if(!file)return;
- busyShow("Reading preset","Reading the ZIP directory without loading the whole file into memory…");
+ busyShow("Importing preset","Reading the preset safely without loading every song into memory…");
  try{
   const index=await readZipIndex(file);const mf=index.get("library.json");if(!mf)throw new Error("This preset is missing library.json.");
   const manifest=sanitizeManifest(JSON.parse(await (await zipEntryBlob(file,mf)).text()));
@@ -571,9 +608,9 @@ function bindEvents(){
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action,id=b.dataset.id;
   if(a==="closeModal"){closeModal();return}
-  if(a==="addSongs"){closeSheet();$("#audioPicker").click();return}
+  if(a==="addSongs"){closeSheet();openFilePicker($("#audioPicker"));return}
   if(a==="openLibraryTools"){openLibraryTools();return}
-  if(a==="importPreset"){closeSheet();$("#presetPicker").click();return}
+  if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
   if(a==="exportPreset"){closeSheet();exportPreset();return}
   if(a==="backupMeta"){closeSheet();backupMeta();return}
   if(a==="storageInfo"){closeSheet();storageInfo();return}
@@ -605,14 +642,29 @@ function bindEvents(){
 }
 async function boot(){
  try{
-  await openDB();await initOPFS();await persistRequest();await loadCoverMap();
+  // Never block the UI on the remote cover registry. On mobile/Google Sites
+  // that request can be delayed, and buttons must still be usable immediately.
+  await openDB();
+  await initOPFS();
+  await persistRequest();
+
   const had=await restore();
-  if(!had){await saveMeta(true)}else await saveMeta(true);
-  bindEvents();render();
+  if(!had)await saveMeta(true);
+  else{
+   // Keep the local database current, but do not rebuild the library from
+   // the backup on every normal reload.
+   try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}
+  }
+
+  bindEvents();
+  render();
+  void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
   if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
   toast(had?"Library restored.":"Localify Mobile ready.");
  }catch(e){
-  console.error("boot",e);try{bindEvents();render()}catch{}toast("Localify opened, but browser storage is unavailable.");
+  console.error("boot",e);
+  try{bindEvents();render()}catch(renderError){console.error("emergency render",renderError)}
+  toast("Localify opened, but browser storage is unavailable.");
  }
 }
 boot();

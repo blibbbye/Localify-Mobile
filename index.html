@@ -27,6 +27,28 @@ button{border:0}
 .brandText{display:flex;flex-direction:column;align-items:flex-end;line-height:1}
 .brandText strong{font-size:13px;letter-spacing:-.45px}.brandText small{font-size:7px;letter-spacing:.12em;color:#74808e;margin-top:3px}
 .brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
+.topRight{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
+.profileBtn{height:38px;max-width:150px;padding:0 11px;border-radius:12px;border:1px solid #2b3540;background:#151b21;color:#dce6ed;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;overflow:hidden}
+.profileBtn:hover{background:#1b222a;border-color:#3a4652}
+.profileBtn .profileIcon{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;color:#9ee5ff;background:#24313c}
+.profileBtn .profileIcon .i{width:15px;height:15px;margin:0}
+.profileBtnText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profileCard{display:grid;gap:14px}
+.profileIdentity{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid #29343f;border-radius:15px;background:linear-gradient(145deg,#171e25,#11161b)}
+.profileAvatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#1e3441;border:1px solid #385466;color:#9ee5ff;font-weight:950;font-size:17px;flex:none}
+.profileIdentity h3{margin:0;font-size:18px}.profileIdentity p{margin:3px 0 0;color:#7f8b98;font-size:10px}
+.profileStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.profileStat{padding:11px;border:1px solid #26313a;border-radius:13px;background:#131920}
+.profileStat strong{display:block;font-size:16px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profileStat span{display:block;margin-top:3px;color:#788592;font-size:9px}
+.profileSection{padding-top:2px}.profileSectionTitle{font-size:12px;font-weight:900;color:#dfe7ed;margin-bottom:8px}
+.profileList{display:grid;gap:5px}
+.profileRow{display:grid;grid-template-columns:24px 42px minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 8px;border:1px solid #202a33;border-radius:11px;background:#10151a}
+.profileRank{font-size:11px;font-weight:950;color:#6f7b87;text-align:center}.profileRowArt{width:42px;height:42px;border-radius:8px;overflow:hidden;background:#202832;display:grid;place-items:center}.profileRowArt img{width:100%;height:100%;object-fit:cover}.profileRowArt .i{width:18px;height:18px}
+.profileRowText{min-width:0}.profileRowText strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profileRowText span{display:block;font-size:9px;color:#7d8995;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.profileRowTime{font-size:9px;color:#727e8a;text-align:right;white-space:nowrap}
+.recapBox{padding:12px;border:1px solid rgba(125,211,252,.2);background:rgba(125,211,252,.055);border-radius:14px}.recapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}.recapStat{padding:9px 10px;border-radius:11px;background:#11181e;border:1px solid #25313a}.recapStat strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.recapStat span{display:block;color:#7a8794;font-size:9px;margin-top:2px}
+.profileSettings{display:grid;gap:8px}.profileSetting{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #242e37;border-radius:11px;background:#11171c}.profileSetting>span{font-size:11px;font-weight:800}.profileSetting input{width:130px}.profileSetting select{width:110px}
+.profileFoot{display:flex;gap:7px}.profileFoot .btn{flex:1}.loginBox{display:grid;gap:11px}.loginHint{color:#7f8a96;font-size:10px;line-height:1.45}
+@media(max-width:430px){.profileBtn{width:38px;height:38px;padding:0;border-radius:11px}.profileBtnText{display:none}.profileStats{grid-template-columns:1fr}.topRight{gap:5px}.brandText strong{font-size:11px}}
 main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;margin:auto}
 .head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.headText{min-width:0}.head h1{margin:0;font-size:26px;letter-spacing:-.8px}.head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
 .btn{min-height:42px;padding:9px 12px;border:1px solid #303a45;border-radius:12px;background:#151b21;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:850}
@@ -75,7 +97,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 <div class="app">
 <header class="top">
   <div class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="search" type="search" placeholder="Search your music"></div>
-  <div class="brand"><div class="brandText"><strong>Localify Mobile</strong></div><img src="./icon.svg" alt="Localify"></div>
+  <div class="topRight"><button class="profileBtn" id="profileBtn" type="button" aria-label="Localify profile"><span class="profileIcon">'+icon("user")+'</span><span class="profileBtnText" id="profileBtnText">Log in</span></button><div class="brand"><div class="brandText"><strong>Localify Mobile</strong></div><img src="./icon.svg" alt="Localify"></div></div>
 </header>
 <main id="main"></main>
 <nav class="nav" id="nav"></nav>
@@ -105,7 +127,7 @@ const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/co
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
 let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
-let state={version:2,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},detail:null};
+let state={version:2,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{loggedIn:false,name:""},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function uid(){return crypto.randomUUID?crypto.randomUUID():"m-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}
@@ -134,6 +156,8 @@ function icon(name){
  shield:'<path d="M12 3 19 6v6c0 4.3-2.8 7.2-7 9-4.2-1.8-7-4.7-7-9V6z"/><path d="m9 12 2 2 4-4"/>',
  close:'<path d="m6 6 12 12M18 6 6 18"/>',
  clock:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',
+ user:'<circle cx="12" cy="8" r="3"/><path d="M5 20c.9-4 3.2-6 7-6s6.1 2 7 6"/>',
+ chart:'<path d="M5 19V5M5 19h14"/><path d="m8 15 3-4 3 2 4-6"/>',
  };
  return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+(p[name]||p.more2)+'</svg>';
 }
@@ -217,6 +241,88 @@ async function removeAudio(t){
  if(rootDir){try{const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});await dir.removeEntry(t.id)}catch{}}
  try{await idbDel("files",t.id)}catch{}
 }
+function normalizeStats(){
+ const d={totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0};
+ const s=Object.assign(d,state.stats||{});
+ s.totalSeconds=Math.max(0,Number(s.totalSeconds)||0);
+ s.playCounts=s.playCounts&&typeof s.playCounts==="object"?s.playCounts:{};
+ s.events=Array.isArray(s.events)?s.events.filter(e=>e&&e.id&&Number.isFinite(Number(e.at))).map(e=>({id:String(e.id),at:Number(e.at),seconds:Math.max(0,Number(e.seconds)||0)})):[];
+ s.events=s.events.filter(e=>e.at>=Date.now()-180*86400000).slice(-12000);
+ s.lastTrackId=s.lastTrackId||null;s.lastPosition=Math.max(0,Number(s.lastPosition)||0);
+ state.stats=s;return s;
+}
+function normalizeProfile(){
+ state.profile=Object.assign({loggedIn:false,name:""},state.profile||{});
+ state.profile.loggedIn=!!state.profile.loggedIn;
+ state.profile.name=String(state.profile.name||"").trim().slice(0,40);
+ return state.profile;
+}
+function formatListenTime(sec){
+ const s=Math.max(0,Math.floor(Number(sec)||0)),m=Math.floor(s/60);
+ if(m<60)return m+" min";
+ const h=Math.floor(m/60),mm=m%60;
+ return h+" hr"+(h===1?"":"s")+(mm?" "+mm+" min":"");
+}
+function recordListeningProgress(){
+ const s=normalizeStats(),t=state.tracks.find(x=>x.id===state.currentId);
+ if(!t||audio.paused)return;
+ const pos=Math.max(0,Number(audio.currentTime)||0),last=s.lastTrackId===t.id?s.lastPosition:pos,delta=pos-last;
+ if(delta>0&&delta<=5){
+  s.totalSeconds+=delta;
+  const ev=s.events[s.events.length-1];
+  if(ev&&ev.id===t.id)ev.seconds+=delta;
+ }
+ s.lastTrackId=t.id;s.lastPosition=pos;
+}
+function recordPlay(t){
+ if(!t)return;
+ const s=normalizeStats();
+ s.playCounts[t.id]=(Number(s.playCounts[t.id])||0)+1;
+ s.events.push({id:t.id,at:Date.now(),seconds:0});
+ if(s.events.length>12000)s.events=s.events.slice(-12000);
+ s.lastTrackId=t.id;s.lastPosition=0;s.totalSeconds=Math.max(0,Number(s.totalSeconds)||0);
+ scheduleSave();
+}
+function weeklyStats(){
+ const s=normalizeStats(),cut=Date.now()-7*86400000,events=s.events.filter(e=>e.at>=cut),bySong=new Map(),byArtist=new Map();
+ for(const e of events){
+  const t=state.tracks.find(x=>x.id===e.id);if(!t)continue;
+  const sec=Math.max(0,Number(e.seconds)||0),cur=bySong.get(t.id)||{track:t,seconds:0,plays:0};
+  cur.seconds+=sec;cur.plays++;bySong.set(t.id,cur);
+  for(const a of artistNames(t))byArtist.set(a,(byArtist.get(a)||0)+sec);
+ }
+ const list=[...bySong.values()].sort((a,b)=>b.seconds-a.seconds||b.plays-a.plays).slice(0,5),topArtist=[...byArtist.entries()].sort((a,b)=>b[1]-a[1])[0];
+ return {list,seconds:events.reduce((n,e)=>n+(Number(e.seconds)||0),0),plays:events.length,unique:new Set(events.map(e=>e.id)).size,topArtist:topArtist?topArtist[0]:"None"};
+}
+function profileTopSongs(limit=10){
+ const s=normalizeStats();
+ return Object.entries(s.playCounts).map(([id,count])=>({track:state.tracks.find(t=>t.id===id),count:Number(count)||0})).filter(x=>x.track).sort((a,b)=>b.count-a.count).slice(0,limit);
+}
+function initials(name){return String(name||"Localify").trim().split(/\s+/).map(x=>x[0]||"").join("").slice(0,2).toUpperCase()||"L";}
+function renderProfileButton(){
+ const p=normalizeProfile(),b=$("#profileBtn"),t=$("#profileBtnText"),ic=b?.querySelector(".profileIcon");
+ if(!b||!t||!ic)return;
+ if(p.loggedIn){t.textContent=p.name||"Profile";ic.textContent=initials(p.name)}
+ else{t.textContent="Log in";ic.innerHTML=icon("user")}
+}
+function bindProfileModal(){
+ $("#profileVolume")?.addEventListener("input",e=>{state.settings.volume=Number(e.target.value);audio.volume=state.settings.volume;scheduleSave()});
+ $("#profileShuffle")?.addEventListener("change",e=>{state.settings.shuffle=e.target.value==="on";scheduleSave()});
+ $("#profileRepeat")?.addEventListener("change",e=>{state.settings.repeat=e.target.value;scheduleSave()});
+ $("[data-profile-art]").forEach(el=>{const t=state.tracks.find(x=>x.id===el.dataset.profileArt);if(t)coverFor(t).then(u=>{if(el.isConnected&&u)el.innerHTML='<img src="'+esc(u)+'" alt="">'}).catch(()=>{})});
+}
+function openProfile(){
+ normalizeProfile();normalizeStats();
+ if(!state.profile.loggedIn){
+  openModal('<div class="modalHead"><h2>Log in</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="loginBox"><div class="profileIdentity"><div class="profileAvatar">'+icon("user")+'</div><div><h3>Localify Profile</h3><p>Recaps, listening time and top songs</p></div></div><div class="loginHint">This profile is stored on this device. It is not a cloud account, so it does not send your music or listening history anywhere.</div><div class="field"><label>Display name</label><input id="profileNameInput" maxlength="40" placeholder="Your name"></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="profileLogin">'+icon("user")+'Continue</button></div></div>');
+  return;
+ }
+ const week=weeklyStats(),top=profileTopSongs(10),s=normalizeStats(),plays=Object.values(s.playCounts).reduce((n,x)=>n+(Number(x)||0),0);
+ const topHtml=top.length?'<div class="profileList">'+top.map((x,i)=>'<div class="profileRow"><div class="profileRank">'+(i+1)+'</div><div class="profileRowArt" data-profile-art="'+esc(x.track.id)+'">'+icon("library")+'</div><div class="profileRowText"><strong>'+esc(trackTitle(x.track))+'</strong><span>'+esc(artistText(x.track))+' • '+x.count+' plays</span></div><div class="profileRowTime">'+formatListenTime(s.events.filter(e=>e.id===x.track.id).reduce((n,e)=>n+(Number(e.seconds)||0),0))+'</div></div>').join("")+'</div>':'<div class="empty"><strong>No top songs yet</strong>Play some music to start tracking your history.</div>';
+ const weeklyTop=week.list[0]?.track?trackTitle(week.list[0].track):"None";
+ openModal('<div class="modalHead"><h2>Your Localify</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="profileCard"><div class="profileIdentity"><div class="profileAvatar">'+esc(initials(state.profile.name))+'</div><div><h3>'+esc(state.profile.name||"Profile")+'</h3><p>Localify Profile</p></div></div><div class="profileStats"><div class="profileStat"><strong>'+formatListenTime(s.totalSeconds)+'</strong><span>Listening time ever</span></div><div class="profileStat"><strong>'+plays+'</strong><span>Plays ever</span></div><div class="profileStat"><strong>'+state.tracks.length+'</strong><span>Songs in library</span></div></div><div class="profileSection"><div class="profileSectionTitle">Top songs ever</div>'+topHtml+'</div><div class="profileSection"><div class="profileSectionTitle">Weekly recap</div><div class="recapBox"><strong>Last 7 days</strong><div class="recapGrid"><div class="recapStat"><strong>'+formatListenTime(week.seconds)+'</strong><span>Listening time</span></div><div class="recapStat"><strong>'+week.plays+'</strong><span>Song starts</span></div><div class="recapStat"><strong>'+week.unique+'</strong><span>Unique songs</span></div><div class="recapStat"><strong>'+esc(weeklyTop)+'</strong><span>Top song</span></div><div class="recapStat"><strong>'+esc(week.topArtist)+'</strong><span>Top artist</span></div></div></div></div><div class="profileSection"><div class="profileSectionTitle">Settings</div><div class="profileSettings"><label class="profileSetting"><span>Volume</span><input id="profileVolume" type="range" min="0" max="1" step=".01" value="'+String(state.settings.volume??.9)+'"></label><label class="profileSetting"><span>Shuffle</span><select id="profileShuffle"><option value="off" '+(!state.settings.shuffle?"selected":"")+'>Off</option><option value="on" '+(state.settings.shuffle?"selected":"")+'>On</option></select></label><label class="profileSetting"><span>Repeat</span><select id="profileRepeat"><option value="off" '+(state.settings.repeat==="off"?"selected":"")+'>Off</option><option value="all" '+(state.settings.repeat==="all"?"selected":"")+'>All</option><option value="one" '+(state.settings.repeat==="one"?"selected":"")+'>One</option></select></label></div></div><div class="profileFoot"><button class="btn" data-action="storageInfo">'+icon("shield")+'Storage</button><button class="btn" data-action="backupMeta">'+icon("download")+'Backup</button><button class="btn danger" data-action="profileLogout">Log out</button></div></div>');
+ bindProfileModal();
+}
 async function saveMeta(writeBackup=true){
  const meta=cloneMeta();
  if(!db)throw new Error("Localify storage is not ready.");
@@ -236,6 +342,7 @@ async function restore(){
  if(!meta)return false;
  state=Object.assign(state,meta);
  state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},state.settings||{});
+ normalizeStats();normalizeProfile();
  state.tracks=Array.isArray(state.tracks)?state.tracks:[];state.albums=Array.isArray(state.albums)?state.albums:[];state.artists=Array.isArray(state.artists)?state.artists:[];state.playlists=Array.isArray(state.playlists)?state.playlists:[];state.liked=Array.isArray(state.liked)?state.liked:[];state.recent=Array.isArray(state.recent)?state.recent:[];state.queue=Array.isArray(state.queue)?state.queue:[];state.currentId=state.currentId||null;state.detail=null;
  if(fromBackup)try{await idbPut("meta","app",cloneMeta())}catch{}
  return true;
@@ -392,6 +499,7 @@ function renderMore(){
  '<div class="section"><div class="notice">Localify Mobile requests persistent browser storage, keeps a metadata safety backup, and stores audio outside the app UI so the catalog does not have to load every song into memory at startup.</div></div>';
 }
 function render(){
+ renderProfileButton();
  $("#nav").innerHTML=navHtml();
  if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else renderMore();
  renderPlayer();
@@ -481,11 +589,12 @@ function showDetail(type,id){
 }
 async function playTrack(id){
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
+ recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
  currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
  state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));if(!state.queue.includes(id))state.queue.push(id);state.queueIndex=state.queue.indexOf(id);
  audio.volume=state.settings.volume??.9;updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
- try{await audio.play()}catch(e){toast("Press play again to start audio.");}
+ try{await audio.play();recordPlay(t);render()}catch(e){toast("Press play again to start audio.");}
 }
 function queuePlay(id){const t=state.tracks.find(x=>x.id===id);if(!t)return;state.queue=[id,...state.queue.filter(x=>x!==id)];state.queueIndex=0;playTrack(id)}
 function playList(ts,start){
@@ -639,15 +748,28 @@ function bindEvents(){
  $("#audioPicker").addEventListener("change",e=>{const files=[...e.target.files];e.target.value="";addFiles(files)});
  $("#imagePicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f){window.__pickedImage=f;toast("Image selected.");}});
  $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
+ $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
  $("#prevBtn").onclick=prev;$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};
- audio.addEventListener("play",()=>{renderPlayer();saveMeta(true).catch(()=>{})});audio.addEventListener("pause",renderPlayer);audio.addEventListener("timeupdate",renderPlayer);audio.addEventListener("ended",next);
+ audio.addEventListener("play",()=>{renderPlayer();scheduleSave()});
+ audio.addEventListener("pause",()=>{recordListeningProgress();renderPlayer();scheduleSave()});
+ audio.addEventListener("timeupdate",()=>{recordListeningProgress();renderPlayer()});
+ audio.addEventListener("ended",()=>{recordListeningProgress();next()});
+
  document.addEventListener("click",async e=>{
   if(e.target.closest?.("#cancelBusyBtn")){cancelBusy();return}
   if(busy)return;
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action,id=b.dataset.id;
   if(a==="closeModal"){closeModal();return}
+  if(a==="profileLogin"){
+   const name=$("#profileNameInput")?.value.trim()||"Localify User";
+   state.profile={loggedIn:true,name:name.slice(0,40)};
+   normalizeProfile();saveMeta(true).catch(()=>{});renderProfileButton();closeModal();openProfile();return;
+  }
+  if(a==="profileLogout"){
+   state.profile={loggedIn:false,name:""};saveMeta(true).catch(()=>{});renderProfileButton();closeModal();return;
+  }
   if(a==="addSongs"){closeSheet();openFilePicker($("#audioPicker"));return}
   if(a==="openLibraryTools"){openLibraryTools();return}
   if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
@@ -691,6 +813,7 @@ async function boot(){
     await persistRequest();
 
   const had=await restore();
+  normalizeStats();normalizeProfile();
   if(!had)await saveMeta(true);
   else{
    try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}

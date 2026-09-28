@@ -1,4 +1,4 @@
-const CACHE="localify-mobile-v5";
+const CACHE="localify-mobile-v6";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));

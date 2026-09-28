@@ -292,24 +292,24 @@ function renderSearch(){
 }
 function renderLibrary(){
  const ts=state.tracks;
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+" songs • "+state.albums.length+" albums</p></div><button class="btn primary icon" data-action="addSongs" aria-label="Add songs">'+icon("plus")+'</button></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><button class="btn primary icon" data-action="addSongs" aria-label="Add songs">'+icon("plus")+'</button></div>'+
    (ts.length?'<div class="list">'+ts.slice(0,300).map(songRow).join("")+'</div>':'<div class="empty"><strong>Your library is empty</strong>Tap + to add songs.</div>');
  bindCovers();
 }
 function renderAlbums(){
  const shown=state.albums.slice(0,80);
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Albums</h1><p>'+state.albums.length+" albums</p></div><button class="btn primary icon" data-action="createAlbum" aria-label="Create album">'+icon("plus")+'</button></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Albums</h1><p>'+state.albums.length+' albums</p></div><button class="btn primary icon" data-action="createAlbum" aria-label="Create album">'+icon("plus")+'</button></div>'+
  (shown.length?'<div class="grid">'+shown.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Tap + to create one.</div>');
  bindCovers();
 }
 function renderArtists(){
  const shown=state.artists.slice(0,80);
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Artists</h1><p>'+state.artists.length+" artists</p></div><button class="btn primary icon" data-action="createArtist" aria-label="Create artist">'+icon("plus")+'</button></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Artists</h1><p>'+state.artists.length+' artists</p></div><button class="btn primary icon" data-action="createArtist" aria-label="Create artist">'+icon("plus")+'</button></div>'+
  (shown.length?'<div class="grid">'+shown.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Tap + to create one.</div>');
 }
 function renderPlaylists(){
  const shown=state.playlists.slice(0,80);
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Playlists</h1><p>'+state.playlists.length+" playlists</p></div><button class="btn primary icon" data-action="createPlaylist" aria-label="Create playlist">'+icon("plus")+'</button></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Playlists</h1><p>'+state.playlists.length+' playlists</p></div><button class="btn primary icon" data-action="createPlaylist" aria-label="Create playlist">'+icon("plus")+'</button></div>'+
  (shown.length?'<div class="grid">'+shown.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Tap + to create one.</div>');
 }
 function renderMore(){

@@ -589,6 +589,9 @@ function bindEvents(){
   if(a==="createAlbum"){createEditor("album",null);return}
   if(a==="createArtist"){createEditor("artist",null);return}
   if(a==="createPlaylist"){createEditor("playlist",null);return}
+  if(a==="editAlbum"){const x=state.albums.find(v=>v.id===id);if(x)createEditor("album",x);return}
+  if(a==="editArtist"){const x=state.artists.find(v=>v.id===id);if(x)createEditor("artist",x);return}
+  if(a==="editPlaylist"){const x=state.playlists.find(v=>v.id===id);if(x)createEditor("playlist",x);return}
   if(a==="saveEditor"){saveEditor(b.dataset.kind,id);return}
   if(a==="openAlbum"){showDetail("album",id);return}
   if(a==="openArtist"){showDetail("artist",id);return}

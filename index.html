@@ -75,7 +75,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 .sheetShade{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:none;align-items:flex-end}.sheetShade.open{display:flex}.sheet{width:100%;max-height:88dvh;overflow:auto;background:#10151a;border-top:1px solid #2c3540;border-radius:22px 22px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -25px 70px rgba(0,0,0,.5)}.sheetGrab{width:42px;height:4px;background:#48525e;border-radius:99px;margin:0 auto 12px}.sheet h2{margin:4px 2px 12px;font-size:20px}.sheetGrid{display:grid;gap:7px}.sheetItem{min-height:46px;width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#151b21;border:1px solid #27313b;border-radius:12px;text-align:left}.sheetItem .i{width:18px;height:18px}
 .modalShade{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.68);display:none;align-items:flex-end}.modalShade.open{display:flex}.modal{width:100%;max-height:92dvh;overflow:auto;background:#11161c;border-top:1px solid #2f3944;border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -30px 80px rgba(0,0,0,.6)}.modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.modalHead h2{margin:0;font-size:20px}.form{display:grid;gap:10px;margin-top:14px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#84909c;text-transform:uppercase;letter-spacing:.07em}.field input,.field textarea,.field select{width:100%;border:1px solid #2b3540;background:#0c1116;color:#f2f5f7;border-radius:11px;padding:11px;outline:0}.field textarea{min-height:130px;resize:vertical}.modalFoot{display:flex;gap:7px;margin-top:14px}.modalFoot .btn{flex:1}.coverPick{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center}.coverPickPreview{width:82px;height:82px;border-radius:14px;overflow:hidden;background:#202832;display:grid;place-items:center}.coverPickPreview img{width:100%;height:100%;object-fit:cover}
 .toast{position:fixed;left:12px;right:12px;bottom:calc(var(--player) + var(--nav) + 10px);z-index:150;padding:11px 13px;border-radius:12px;background:#171d23;border:1px solid #303a45;box-shadow:0 14px 45px rgba(0,0,0,.4);font-size:12px;font-weight:800;opacity:0;transform:translateY(8px);pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translateY(0)}
-.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.82);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}.busyShade.open{display:flex}.busyCard{width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}.busyCard .btn{display:block;width:100%;margin-top:14px}
+.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.62);display:none;align-items:center;justify-content:center;padding:24px;text-align:center;pointer-events:none}.busyShade.open{display:flex}.busyCard{pointer-events:auto;width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}.busyCard .btn{display:block;width:100%;margin-top:14px}
 .detailHero{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:center;padding:8px 0 15px}.detailArt{width:120px;height:120px;border-radius:18px;overflow:hidden;background:#202832;display:grid;place-items:center}.detailArt img{width:100%;height:100%;object-fit:cover}.detailTitle{font-size:25px;font-weight:950;line-height:1.02;letter-spacing:-1px;margin:0}.detailSub{margin-top:7px;color:#87929f;font-size:11px;line-height:1.45}
 .pill{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #29323c;background:#151b21;border-radius:99px;font-size:9px;color:#8b96a1;margin:4px 4px 0 0}
 .morePanel{display:grid;gap:7px}.morePanel .btn{width:100%;justify-content:flex-start}
@@ -693,7 +693,7 @@ async function importPreset(file){
    const e=src.audioFile?index.get(src.audioFile):null;
    if(e){const blob=await zipEntryBlob(file,e);await saveAudio(t,blob)}else if(src.hasAudio)throw new Error("Missing audio for "+(src.title||"Unknown song"));
    delete t._blob;t._blob=null;state.tracks.push(t);
-   if(done%5===0)await saveMeta(true);
+   if(done%20===0)await saveMeta(true);
    await new Promise(r=>setTimeout(r,0));
   }
   busyCheck();
@@ -763,9 +763,18 @@ function bindEvents(){
 
  document.addEventListener("click",async e=>{
   if(e.target.closest?.("#cancelBusyBtn")){cancelBusy();return}
-  if(busy)return;
+  const viewBtn=e.target.closest?.("[data-view]");
+  if(viewBtn){
+    const view=viewBtn.dataset.view;
+    if(view){state.view=view;state.detail=null;render();}
+    return;
+  }
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action,id=b.dataset.id;
+  if(busy&&!["closeModal","openLibraryTools"].includes(a)){
+    toast("Localify is busy. Please wait for the current operation to finish.");
+    return;
+  }
   if(a==="closeModal"){closeModal();return}
   if(a==="profileLogin"){
    const name=$("#profileNameInput")?.value.trim()||"Localify User";
@@ -808,8 +817,10 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
-  // Bind and render first. Mobile browsers can stall a storage API; the UI must
-  // still be usable while IndexedDB/OPFS initializes in the background.
+  // Reset transient UI-operation state on every page load so an interrupted
+  // import/export can never leave the whole page looking disabled.
+  busy=false;operationController=null;
+  $("#busyShade").classList.remove("open");
   try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
   storageInitPromise=(async()=>{
    try{

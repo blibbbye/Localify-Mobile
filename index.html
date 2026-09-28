@@ -104,7 +104,7 @@ const BACKUP_KEY="localify-mobile-v2-backup";
 const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/covers.json";
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
-let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null;
+let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
 let state={version:2,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
@@ -161,6 +161,16 @@ function idbGet(store,key){return new Promise((res,rej)=>{try{const r=db.transac
 function idbPut(store,key,value){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readwrite").objectStore(store).put(value,key);r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function idbDel(store,key){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readwrite").objectStore(store).delete(key);r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function cloneMeta(){return JSON.parse(JSON.stringify({...state,tracks:state.tracks.map(t=>{const x={...t};delete x.blob;delete x._blob;return x})}))}
+function storageWait(timeout=15000){
+ if(storageReady)return Promise.resolve(true);
+ if(storageInitPromise)return Promise.race([storageInitPromise.then(()=>storageReady),new Promise(resolve=>setTimeout(()=>resolve(storageReady),timeout))]);
+ return Promise.resolve(false);
+}
+async function ensureStorageForAction(){
+ const ok=await storageWait();
+ if(!ok){toast("Localify is still preparing saved storage. Please try again in a moment.");throw new Error("Storage is not ready yet.");}
+ return true;
+}
 async function persistRequest(){try{if(navigator.storage?.persist)await navigator.storage.persist()}catch{}}
 async function initOPFS(){try{if(navigator.storage?.getDirectory)rootDir=await navigator.storage.getDirectory();}catch{rootDir=null}}
 async function opfsFile(id,writeBlob){
@@ -209,6 +219,7 @@ async function removeAudio(t){
 }
 async function saveMeta(writeBackup=true){
  const meta=cloneMeta();
+ if(!db)throw new Error("Localify storage is not ready.");
  await idbPut("meta","app",meta);
  if(writeBackup){try{localStorage.setItem(META_KEY,JSON.stringify(meta));localStorage.setItem(BACKUP_KEY,JSON.stringify(meta))}catch(e){console.warn("metadata backup unavailable",e)}}
 }
@@ -329,7 +340,7 @@ function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,8);
  const albums=state.albums.slice(0,8);
  $("#main").innerHTML=
- '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><label class="btn primary" for="audioPicker">'+icon("plus")+'Add Songs</label><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
+ '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>';
  bindCovers();
@@ -348,7 +359,7 @@ function renderSearch(){
 }
 function renderLibrary(){
  const ts=state.tracks;
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><label class="btn primary icon" for="audioPicker" aria-label="Add songs">'+icon("plus")+'</label></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><button type="button" class="btn primary icon" data-action="addSongs" aria-label="Add songs">'+icon("plus")+'</button></div>'+
    (ts.length?'<div class="list">'+ts.slice(0,300).map(songRow).join("")+'</div>':'<div class="empty"><strong>Your library is empty</strong>Tap + to add songs.</div>');
  bindCovers();
 }
@@ -416,7 +427,7 @@ function createEditor(kind,obj){
  extra+
  '</div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveEditor" data-kind="'+kind+'" data-id="'+esc(x.id||"")+'">Save</button></div>');
 }
-function saveEditor(kind,id){
+async function saveEditor(kind,id){
  const existing=state.tracks.find(x=>x.id===id)||state.albums.find(x=>x.id===id)||state.artists.find(x=>x.id===id)||state.playlists.find(x=>x.id===id)||null;
  const title=$("#fTitle")?.value.trim();if(!title){toast("Add a name first.");return}
  if(kind==="song"){
@@ -431,10 +442,11 @@ function saveEditor(kind,id){
  }else{
   const p=existing||{id:uid(),name:"",description:"",trackIds:[]};p.name=title;p.description=$("#fDescription")?.value||"";if(!existing)state.playlists.push(p);
  }
- closeModal();saveMeta(true).catch(e=>console.warn(e));render();toast("Saved.");
+ closeModal();try{await ensureStorageForAction();await saveMeta(true)}catch(e){console.warn(e)}render();toast("Saved.");
 }
 async function addFiles(files){
  if(!files.length)return;
+ await ensureStorageForAction();
  busyShow("Importing music","Preparing "+files.length+" file"+(files.length===1?"":"s")+"…");
  try{
   await persistRequest();let done=0;
@@ -549,7 +561,8 @@ async function zipEntryBlob(file,e){
 }
 async function importPreset(file){
  if(!file)return;
- busyShow("Importing preset","Reading the preset safely without loading every song into memory…");
+ await ensureStorageForAction();
+ busyShow("Importing preset","Opening the preset index…");
  try{
   busyCheck();
   const index=await readZipIndex(file);const mf=index.get("library.json");if(!mf)throw new Error("This preset is missing library.json.");
@@ -586,6 +599,7 @@ function zipEnd(count,cdSize,cdOff){const ex=zipExtra([count,cdSize,cdOff]),body
 function crc32Blob(blob){return blob.arrayBuffer().then(b=>{const a=new Uint8Array(b),tab=crcTable(),c0=0xffffffff;let c=c0;for(const x of a)c=tab[(c^x)&255]^(c>>>8);return (c^0xffffffff)>>>0})}
 function crcTable(){const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0);t[n]=c>>>0}return t}
 async function exportPreset(){
+ await ensureStorageForAction();
  busyShow("Building preset","Collecting metadata…");
  try{
   busyCheck();
@@ -667,31 +681,36 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
- try{
-  // Never block the UI on the remote cover registry. On mobile/Google Sites
-  // that request can be delayed, and buttons must still be usable immediately.
-  await openDB();
-  await initOPFS();
-  await persistRequest();
+  // Bind and render first. Mobile browsers can stall a storage API; the UI must
+  // still be usable while IndexedDB/OPFS initializes in the background.
+  try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
+  storageInitPromise=(async()=>{
+   try{
+    await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))]);
+    await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
+    await persistRequest();
 
   const had=await restore();
   if(!had)await saveMeta(true);
   else{
-   // Keep the local database current, but do not rebuild the library from
-   // the backup on every normal reload.
    try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}
   }
-
-  bindEvents();
-  render();
+  storageReady=true;
   void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
   if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
-  toast(had?"Library restored.":"Localify Mobile ready.");
+  return had;
  }catch(e){
-  console.error("boot",e);
-  try{bindEvents();render()}catch(renderError){console.error("emergency render",renderError)}
-  toast("Localify opened, but browser storage is unavailable.");
+  console.error("storage boot",e);
+  storageReady=false;
+  return false;
  }
+ })();
+ try{
+   const had=await storageInitPromise;
+   if(had)toast("Library restored.");
+   else if(storageReady)toast("Localify Mobile ready.");
+   else toast("Localify is running, but saved storage is unavailable.");
+ }catch(e){console.error("boot storage",e)}
 }
 boot();
 })();

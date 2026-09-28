@@ -1,52 +1,25 @@
-const CACHE="localify-mobile-v13";
+const CACHE="localify-mobile-v2";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
-
-self.addEventListener("install",event=>{
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache=>cache.addAll(CORE))
-      .then(()=>self.skipWaiting())
-  );
+self.addEventListener("install",e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
-
-self.addEventListener("activate",event=>{
-  event.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
-      .then(()=>self.clients.claim())
-  );
+self.addEventListener("activate",e=>{
+  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
-
-self.addEventListener("fetch",event=>{
-  const req=event.request;
-  if(req.method!=="GET")return;
-  const url=new URL(req.url);
-
-  // Always prefer the network for the app shell so a broken cached index
-  // cannot keep the phone version stuck on an old release.
-  if(req.mode==="navigate" || url.pathname.endsWith("/index.html")){
-    event.respondWith(
-      fetch(req,{cache:"no-store"})
-        .then(res=>{
-          const copy=res.clone();
-          caches.open(CACHE).then(cache=>cache.put("./index.html",copy)).catch(()=>{});
-          return res;
-        })
-        .catch(()=>caches.match("./index.html"))
+self.addEventListener("fetch",e=>{
+  if(e.request.method!=="GET")return;
+  const u=new URL(e.request.url);
+  if(e.request.mode==="navigate" || u.pathname.endsWith("/index.html")){
+    e.respondWith(
+      fetch(e.request,{cache:"no-store"}).then(r=>{
+        const c=r.clone();caches.open(CACHE).then(x=>x.put("./index.html",c)).catch(()=>{});
+        return r;
+      }).catch(()=>caches.match("./index.html"))
     );
     return;
   }
-
-  event.respondWith(
-    caches.match(req).then(cached=>{
-      if(cached)return cached;
-      return fetch(req).then(res=>{
-        if(url.origin===location.origin){
-          const copy=res.clone();
-          caches.open(CACHE).then(cache=>cache.put(req,copy)).catch(()=>{});
-        }
-        return res;
-      }).catch(()=>cached);
-    })
-  );
+  e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request).then(r=>{
+    if(u.origin===location.origin){const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});}
+    return r;
+  })));
 });

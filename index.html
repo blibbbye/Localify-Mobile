@@ -433,15 +433,18 @@ function next(){
  state.queueIndex=n;playTrack(state.queue[n]);
 }
 function prev(){if(audio.currentTime>4){audio.currentTime=0;return}let n=Math.max(0,state.queueIndex-1);state.queueIndex=n;playTrack(state.queue[n])}
-function updateMediaSession(t){
+async function updateMediaSession(t){
  if(!("mediaSession"in navigator))return;
- try{navigator.mediaSession.metadata=new MediaMetadata({title:trackTitle(t),artist:artistText(t),album:albumName(t),artwork:[{src:COVER_DIR+"placeholder.png",sizes:"512x512",type:"image/png"}]})}catch{}
- navigator.mediaSession.setActionHandler?.("play",()=>audio.play());
- navigator.mediaSession.setActionHandler?.("pause",()=>audio.pause());
- navigator.mediaSession.setActionHandler?.("previoustrack",prev);
- navigator.mediaSession.setActionHandler?.("nexttrack",next);
- navigator.mediaSession.setActionHandler?.("seekbackward",()=>audio.currentTime=Math.max(0,audio.currentTime-10));
- navigator.mediaSession.setActionHandler?.("seekforward",()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10));
+ let artwork=[];
+ try{const cover=await coverFor(t);if(cover)artwork=[{src:cover}] }catch{}
+ try{navigator.mediaSession.metadata=new MediaMetadata({title:trackTitle(t),artist:artistText(t)===NONE?"":artistText(t),album:albumName(t)===NONE?"":albumName(t),artwork:artwork})}catch{}
+ const ms=navigator.mediaSession;
+ try{ms.setActionHandler("play",()=>audio.play())}catch{}
+ try{ms.setActionHandler("pause",()=>audio.pause())}catch{}
+ try{ms.setActionHandler("previoustrack",prev)}catch{}
+ try{ms.setActionHandler("nexttrack",next)}catch{}
+ try{ms.setActionHandler("seekbackward",()=>audio.currentTime=Math.max(0,audio.currentTime-10))}catch{}
+ try{ms.setActionHandler("seekforward",()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10))}catch{}
 }
 function renderPlayer(){
  const t=state.tracks.find(x=>x.id===state.currentId);

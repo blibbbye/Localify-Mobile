@@ -48,7 +48,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 .sheetShade{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:none;align-items:flex-end}.sheetShade.open{display:flex}.sheet{width:100%;max-height:88dvh;overflow:auto;background:#10151a;border-top:1px solid #2c3540;border-radius:22px 22px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -25px 70px rgba(0,0,0,.5)}.sheetGrab{width:42px;height:4px;background:#48525e;border-radius:99px;margin:0 auto 12px}.sheet h2{margin:4px 2px 12px;font-size:20px}.sheetGrid{display:grid;gap:7px}.sheetItem{min-height:46px;width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#151b21;border:1px solid #27313b;border-radius:12px;text-align:left}.sheetItem .i{width:18px;height:18px}
 .modalShade{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.68);display:none;align-items:flex-end}.modalShade.open{display:flex}.modal{width:100%;max-height:92dvh;overflow:auto;background:#11161c;border-top:1px solid #2f3944;border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -30px 80px rgba(0,0,0,.6)}.modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.modalHead h2{margin:0;font-size:20px}.form{display:grid;gap:10px;margin-top:14px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#84909c;text-transform:uppercase;letter-spacing:.07em}.field input,.field textarea,.field select{width:100%;border:1px solid #2b3540;background:#0c1116;color:#f2f5f7;border-radius:11px;padding:11px;outline:0}.field textarea{min-height:130px;resize:vertical}.modalFoot{display:flex;gap:7px;margin-top:14px}.modalFoot .btn{flex:1}.coverPick{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center}.coverPickPreview{width:82px;height:82px;border-radius:14px;overflow:hidden;background:#202832;display:grid;place-items:center}.coverPickPreview img{width:100%;height:100%;object-fit:cover}
 .toast{position:fixed;left:12px;right:12px;bottom:calc(var(--player) + var(--nav) + 10px);z-index:150;padding:11px 13px;border-radius:12px;background:#171d23;border:1px solid #303a45;box-shadow:0 14px 45px rgba(0,0,0,.4);font-size:12px;font-weight:800;opacity:0;transform:translateY(8px);pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translateY(0)}
-.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.82);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}.busyShade.open{display:flex}.busyCard{width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}
+.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.82);display:none;align-items:center;justify-content:center;padding:24px;text-align:center}.busyShade.open{display:flex}.busyCard{width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}.busyCard .btn{display:block;width:100%;margin-top:14px}
 .detailHero{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:center;padding:8px 0 15px}.detailArt{width:120px;height:120px;border-radius:18px;overflow:hidden;background:#202832;display:grid;place-items:center}.detailArt img{width:100%;height:100%;object-fit:cover}.detailTitle{font-size:25px;font-weight:950;line-height:1.02;letter-spacing:-1px;margin:0}.detailSub{margin-top:7px;color:#87929f;font-size:11px;line-height:1.45}
 .pill{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #29323c;background:#151b21;border-radius:99px;font-size:9px;color:#8b96a1;margin:4px 4px 0 0}
 .morePanel{display:grid;gap:7px}.morePanel .btn{width:100%;justify-content:flex-start}
@@ -86,7 +86,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 </section>
 <div class="sheetShade" id="sheetShade"><div class="sheet" id="sheet"></div></div>
 <div class="modalShade" id="modalShade"><div class="modal" id="modal"></div></div>
-<div class="busyShade" id="busyShade"><div class="busyCard"><div class="busySpinner"></div><strong id="busyTitle">Working…</strong><span id="busyText">Please keep Localify open while this finishes.</span></div></div>
+<div class="busyShade" id="busyShade"><div class="busyCard"><div class="busySpinner"></div><strong id="busyTitle">Working…</strong><span id="busyText">Please keep Localify open while this finishes.</span><button class="btn" id="cancelBusyBtn" type="button">Cancel</button></div></div>
 <div class="toast" id="toast"></div>
 <input id="audioPicker" type="file" hidden multiple accept="audio/*,.mp3,.m4a,.mp4,.aac,.flac,.wav,.ogg,.oga,.opus,.webm,.aiff,.aif,.alac,.caf">
 <input id="imagePicker" type="file" hidden accept="image/*">
@@ -104,7 +104,7 @@ const BACKUP_KEY="localify-mobile-v2-backup";
 const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/covers.json";
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
-let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false;
+let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null;
 let state={version:2,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
@@ -138,9 +138,11 @@ function icon(name){
  return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+(p[name]||p.more2)+'</svg>';
 }
 function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),3300)}
-function busyShow(title,text){busy=true;$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";$("#busyShade").classList.add("open")}
+function busyShow(title,text){busy=true;operationController=new AbortController();$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";$("#busyShade").classList.add("open")}
 function busyUpdate(title,text){$("#busyTitle").textContent=title;$("#busyText").textContent=text}
-function busyHide(){busy=false;$("#busyShade").classList.remove("open")}
+function busyHide(){busy=false;operationController=null;$("#busyShade").classList.remove("open")}
+function busyCheck(){if(operationController?.signal.aborted){const e=new Error("Operation cancelled.");e.name="AbortError";throw e}}
+function cancelBusy(){if(operationController)operationController.abort();busy=false;$("#busyShade").classList.remove("open")}
 function openFilePicker(input){
  if(!input)return;
  try{
@@ -171,15 +173,32 @@ async function opfsFile(id,writeBlob){
 async function saveAudio(t,blob){
  t._blob=blob;
  if(rootDir){
-  try{await opfsFile(t.id,blob);t.storage="opfs";delete t.blob;return}catch(e){console.warn("OPFS write failed",e)}
+  try{await opfsFile(t.id,blob);t.storage="opfs";delete t.blob;return}catch(e){
+   console.warn("OPFS write failed",e);
+   rootDir=null;
+   try{
+    await initOPFS();
+    if(rootDir){await opfsFile(t.id,blob);t.storage="opfs";delete t.blob;return}
+   }catch(retryError){console.warn("OPFS retry failed",retryError)}
+  }
  }
  await idbPut("files",t.id,blob);t.storage="idb";
 }
 async function loadAudio(t){
  if(t._blob&&t._blob.size)return t._blob;
- try{
-  if(t.storage==="opfs"&&rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
- }catch(e){console.warn("OPFS read failed",e)}
+ if(t.storage==="opfs"){
+  try{
+   if(!rootDir)await initOPFS();
+   if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
+  }catch(e){
+   console.warn("OPFS read failed",e);
+   rootDir=null;
+   try{
+    await initOPFS();
+    if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
+   }catch(retryError){console.warn("OPFS retry failed",retryError)}
+  }
+ }
  try{const b=await idbGet("files",t.id);if(b?.size){t._blob=b;return b}}catch{}
  return null;
 }
@@ -281,7 +300,7 @@ function tracksForAlbum(id){return state.tracks.filter(t=>t.albumId===id)}
 function tracksForArtist(id){return state.tracks.filter(t=>Array.isArray(t.artistIds)&&t.artistIds.includes(id))}
 function tracksForPlaylist(p){return (p?.trackIds||[]).map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean)}
 function navHtml(){
- const items=[["home","Home","home"],["search","Search","search"],["library","Library","library"],["albums","Albums","albums"],["more","Tools","more"]];
+ const items=[["home","Home","home"],["search","Search","search"],["library","Library","library"],["albums","Albums","albums"],["more","Library Tools","more"]];
  return items.map(x=>'<button type="button" data-view="'+x[0]+'" class="'+(state.view===x[0]?"active":"")+'" aria-label="'+x[1]+'">'+icon(x[2])+'<span>'+x[1]+'</span></button>').join("");
 }
 function songRow(t){
@@ -310,7 +329,7 @@ function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,8);
  const albums=state.albums.slice(0,8);
  $("#main").innerHTML=
- '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
+ '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><label class="btn primary" for="audioPicker">'+icon("plus")+'Add Songs</label><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>';
  bindCovers();
@@ -329,7 +348,7 @@ function renderSearch(){
 }
 function renderLibrary(){
  const ts=state.tracks;
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><button class="btn primary icon" data-action="addSongs" aria-label="Add songs">'+icon("plus")+'</button></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><label class="btn primary icon" for="audioPicker" aria-label="Add songs">'+icon("plus")+'</label></div>'+
    (ts.length?'<div class="list">'+ts.slice(0,300).map(songRow).join("")+'</div>':'<div class="empty"><strong>Your library is empty</strong>Tap + to add songs.</div>');
  bindCovers();
 }
@@ -532,6 +551,7 @@ async function importPreset(file){
  if(!file)return;
  busyShow("Importing preset","Reading the preset safely without loading every song into memory…");
  try{
+  busyCheck();
   const index=await readZipIndex(file);const mf=index.get("library.json");if(!mf)throw new Error("This preset is missing library.json.");
   const manifest=sanitizeManifest(JSON.parse(await (await zipEntryBlob(file,mf)).text()));
   if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length)throw new Error("This preset does not contain supported Localify data.");
@@ -540,18 +560,21 @@ async function importPreset(file){
   manifest.albums.forEach(a=>{if(!a.id)a.id=uid();maps.albums.set(a.id,a);state.albums.push(a)});
   let done=0;
   for(const src of manifest.tracks){
+   busyCheck();
    done++;busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+(src.title||src.fileName||"song"));
    const t=JSON.parse(JSON.stringify(src));t.id=maps.tracks.has(src.id)?maps.tracks.get(src.id).id:(src.id||uid());
    const e=src.audioFile?index.get(src.audioFile):null;
    if(e){const blob=await zipEntryBlob(file,e);await saveAudio(t,blob)}else if(src.hasAudio)throw new Error("Missing audio for "+(src.title||"Unknown song"));
    delete t._blob;t._blob=null;state.tracks.push(t);
    if(done%5===0)await saveMeta(true);
+   await new Promise(r=>setTimeout(r,0));
   }
+  busyCheck();
   manifest.playlists.forEach(p=>{if(!p.id)p.id=uid();state.playlists.push(p)});
   if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked])];
   if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent,...state.recent])].slice(0,100);
   await saveMeta(true);busyHide();render();toast("Preset imported successfully.");
- }catch(e){console.error(e);toast(e?.message||"Could not import preset.");}finally{busyHide()}
+ }catch(e){if(e?.name==="AbortError")toast("Preset import cancelled.");else{console.error(e);toast(e?.message||"Could not import preset.");}}finally{busyHide()}
 }
 function zipU16(n){const a=new Uint8Array(2);new DataView(a.buffer).setUint16(0,n,true);return a}
 function zipU32(n){const a=new Uint8Array(4);new DataView(a.buffer).setUint32(0,n>>>0,true);return a}
@@ -565,16 +588,18 @@ function crcTable(){const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;
 async function exportPreset(){
  busyShow("Building preset","Collecting metadata…");
  try{
+  busyCheck();
   const manifest={version:14,schema:"localify-preset-v2",presetKind:"full",presetName:"Full library",exportedAt:new Date().toISOString(),portableAudio:true,trackCount:state.tracks.length,audioTrackCount:0,artists:state.artists.map(x=>({...x})),albums:state.albums.map(x=>({...x})),tracks:[],playlists:state.playlists.map(x=>({...x})),liked:[...state.liked],recent:[...state.recent],settings:{...state.settings}};
   const files=[{name:"library.json",bytes:new TextEncoder().encode(JSON.stringify(manifest))}];
   let done=0;
-  for(const src of state.tracks){done++;busyUpdate("Preparing preset",done+" / "+state.tracks.length+" songs");const b=await loadAudio(src);if(!b)throw new Error("Audio missing for "+trackTitle(src)+".");const t={...src};delete t._blob;t.storage="";t.hasAudio=true;t.audioFile="audio/"+src.id+(src.fileName?.match(/\.[^.]+$/)||[".bin"])[0];t.audioSize=b.size;manifest.tracks.push(t);manifest.audioTrackCount++;files.push({name:t.audioFile,bytes:new Uint8Array(await b.arrayBuffer())})}
+  for(const src of state.tracks){busyCheck();done++;busyUpdate("Preparing preset",done+" / "+state.tracks.length+" songs");const b=await loadAudio(src);if(!b)throw new Error("Audio missing for "+trackTitle(src)+".");const t={...src};delete t._blob;t.storage="";t.hasAudio=true;t.audioFile="audio/"+src.id+(src.fileName?.match(/\.[^.]+$/)||[".bin"])[0];t.audioSize=b.size;manifest.tracks.push(t);manifest.audioTrackCount++;files.push({name:t.audioFile,bytes:new Uint8Array(await b.arrayBuffer())})}
+  busyCheck();
   files[0].bytes=new TextEncoder().encode(JSON.stringify(manifest));
   let offset=0,parts=[],central=[];
-  for(const f of files){busyUpdate("Creating preset",Math.min(files.indexOf(f)+1,files.length)+" / "+files.length+" entries");const crc=crc32(f.bytes),h=zipLocal(f.name,crc,f.bytes.length),o=offset;parts.push(h,f.bytes);central.push(zipCentral(f.name,crc,f.bytes.length,o));offset+=h.length+f.bytes.length}
+  for(const f of files){busyCheck();busyUpdate("Creating preset",Math.min(files.indexOf(f)+1,files.length)+" / "+files.length+" entries");const crc=crc32(f.bytes),h=zipLocal(f.name,crc,f.bytes.length),o=offset;parts.push(h,f.bytes);central.push(zipCentral(f.name,crc,f.bytes.length,o));offset+=h.length+f.bytes.length}
   const cdOff=offset,cd=join(central);parts.push(cd);parts.push(eocdZip(central.length,cd.length,cdOff));
   const blob=new Blob(parts,{type:"application/octet-stream"});downloadBlob(blob,"Localify-Mobile.localify");busyHide();toast("Preset exported.");
- }catch(e){console.error(e);toast(e?.message||"Could not export preset.");}finally{busyHide()}
+ }catch(e){if(e?.name==="AbortError")toast("Preset export cancelled.");else{console.error(e);toast(e?.message||"Could not export preset.");}}finally{busyHide()}
 }
 function join(parts){const n=parts.reduce((s,x)=>s+x.length,0),out=new Uint8Array(n);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}
 function eocdZip(count,cdSize,cdOff){
@@ -604,6 +629,7 @@ function bindEvents(){
  $("#prevBtn").onclick=prev;$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};
  audio.addEventListener("play",()=>{renderPlayer();saveMeta(true).catch(()=>{})});audio.addEventListener("pause",renderPlayer);audio.addEventListener("timeupdate",renderPlayer);audio.addEventListener("ended",next);
  document.addEventListener("click",async e=>{
+  if(e.target.closest?.("#cancelBusyBtn")){cancelBusy();return}
   if(busy)return;
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action,id=b.dataset.id;

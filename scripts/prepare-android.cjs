@@ -14,7 +14,7 @@ function walk(dir){
   }
   return out;
 }
-const mainActivity=walk(appSrc).find(p=>/MainActivity\\.(java|kt)$/.test(p));
+const mainActivity=walk(appSrc).find(p=>/MainActivity\.(java|kt)$/.test(p));
 if(!mainActivity) throw new Error("MainActivity.java/kt not found.");
 if(!mainActivity.endsWith(".java")) throw new Error("Expected Java MainActivity from Capacitor.");
 const source=fs.readFileSync(mainActivity,"utf8");
@@ -45,12 +45,12 @@ if(!manifest.includes("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK")){
   manifest=manifest.replace(/(<manifest[^>]*>)/,"$1\\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />\\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\" />\\n    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />");
 }
 if(!manifest.includes("LocalifyPlaybackService")){
-  manifest=manifest.replace(/\\s*<\\/application>/,"\\n        <service android:name=\".LocalifyPlaybackService\" android:exported=\"false\" android:foregroundServiceType=\"mediaPlayback\" />\\n    </application>");
+  manifest=manifest.replace(/\s*<\/application>/,"\\n        <service android:name=\".LocalifyPlaybackService\" android:exported=\"false\" android:foregroundServiceType=\"mediaPlayback\" />\\n    </application>");
 }
 fs.writeFileSync(manifestPath,manifest,"utf8");
 if(!source.includes("LocalifyNative")){
   let activity=source;
-  activity=activity.replace(/(package [^;]+;\\n)/,"$1\\nimport android.content.Intent;\\nimport android.os.Build;\\nimport android.webkit.JavascriptInterface;\\n");
+  activity=activity.replace(/(package [^;]+;\n)/,"$1\\nimport android.content.Intent;\\nimport android.os.Build;\\nimport android.webkit.JavascriptInterface;\\n");
   const open=activity.indexOf("{",activity.indexOf("class MainActivity"));
   if(open<0) throw new Error("MainActivity class body not found.");
   const bridge=

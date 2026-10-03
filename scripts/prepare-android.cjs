@@ -18,7 +18,7 @@ const mainActivity=walk(appSrc).find(p=>/MainActivity\.(java|kt)$/.test(p));
 if(!mainActivity) throw new Error("MainActivity.java/kt not found.");
 if(!mainActivity.endsWith(".java")) throw new Error("Expected Java MainActivity from Capacitor.");
 const source=fs.readFileSync(mainActivity,"utf8");
-const pkg=(source.match(/^\\s*package\\s+([A-Za-z0-9_.]+)\\s*;/m)||[])[1];
+const pkg=(source.match(/^\s*package\s+([A-Za-z0-9_.]+)\s*;/m)||[])[1];
 if(!pkg) throw new Error("Could not determine Android package name.");
 const servicePath=path.join(path.dirname(mainActivity),"LocalifyPlaybackService.java");
 const service =

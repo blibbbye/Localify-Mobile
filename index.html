@@ -392,7 +392,7 @@ function openFolderPicker(id,kind){
  const label=kind==="albums"?"Albums":kind==="songs"?"Songs":kind==="artists"?"Artists":"Playlists";
  const rows=all.slice(0,400).map(x=>{
   const title=kind==="songs"?trackTitle(x):kind==="albums"?x.title:kind==="artists"?x.name:x.name;
-  const sub=kind==="songs"?artistText(x)+" • "+albumName(x):kind==="albums"?(x.artist||NONE):(kind==="artists"?artistTextForProfile?.(x)||"":(x.trackIds||[]).length+" songs");
+  const sub=kind==="songs"?artistText(x)+" • "+albumName(x):kind==="albums"?(x.artist||NONE):(kind==="artists"?((x.genres||[]).join(", ")||"Artist profile"):(x.trackIds||[]).length+" songs");
   return '<label class="folderPickRow"><input type="checkbox" class="folderPick" data-id="'+esc(x.id)+'" '+(f[folderKey(kind)]?.includes(x.id)?"checked":"")+'><span><strong>'+esc(title)+'</strong><small>'+esc(sub||"")+'</small></span></label>';
  }).join("");
  openModal('<div class="modalHead"><h2>Add '+label+'</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="folderPickerList">'+(rows||'<div class="empty">Nothing to add yet.</div>')+'</div><div class="modalFoot"><button class="btn" data-action="folderBack" data-id="'+esc(id)+'">Back</button><button class="btn primary" data-action="folderSaveItems" data-id="'+esc(id)+'" data-kind="'+esc(kind)+'">Save</button></div>');
@@ -556,6 +556,9 @@ function renderMore(){
  '<div class="morePanel">'+
  '<button class="btn" data-action="openFolders">'+icon("folder")+'Folders</button>'+
  '<button class="btn" data-action="createFolder">'+icon("plus")+'New folder</button>'+
+ '<button class="btn" data-action="openFolders">'+icon("folder")+'Folders</button>'+
+ '<button class="btn" data-action="createFolder">'+icon("plus")+'New folder</button>'+
+ '<button class="btn" data-action="importFolder">'+icon("folder")+'Import folder</button>'+
  '<button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button>'+
  '<button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button>'+
  '<button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button>'+
@@ -894,6 +897,11 @@ async function downloadSong(id){
 function bindEvents(){
  $("#search").addEventListener("input",e=>{state.search=e.target.value;state.view=e.target.value.trim()?"search":state.view==="search"?"home":state.view;render()});
  $("#audioPicker").addEventListener("change",e=>{const files=[...e.target.files];e.target.value="";addFiles(files)});
+ $("#folderPicker").addEventListener("change",e=>{
+  const files=[...e.target.files];e.target.value="";
+  const root=(files[0]?.webkitRelativePath||"").split("/")[0]||"Imported folder";
+  addFiles(files,{folderName:root,directoryImport:true});
+ });
  $("#imagePicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f){window.__pickedImage=f;toast("Image selected.");}});
  $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
  $("#profileBtn")?.addEventListener("click",openProfile);
@@ -928,6 +936,25 @@ function bindEvents(){
    state.profile={loggedIn:false,name:""};saveMeta(true).catch(()=>{});renderProfileButton();closeModal();return;
   }
   if(a==="addSongs"){closeSheet();openFilePicker($("#audioPicker"));return}
+  if(a==="importFolder"){closeSheet();openFilePicker($("#folderPicker"));return}
+  if(a==="openFolders"){closeSheet();state.view="folders";render();return}
+  if(a==="createFolder"){editFolder(null);return}
+  if(a==="openFolder"){showFolder(id);return}
+  if(a==="editFolder"){editFolder(id);return}
+  if(a==="saveFolder"){saveFolder(id);return}
+  if(a==="folderAdd"){openFolderAddMenu(id);return}
+  if(a==="folderChoose"){closeModal();setTimeout(()=>openFolderPicker(id,b.dataset.kind),0);return}
+  if(a==="folderBack"){closeModal();setTimeout(()=>openFolderAddMenu(id),0);return}
+  if(a==="folderSaveItems"){
+    const f=folderById(id),kind=b.dataset.kind;
+    if(f){ensureFolderArrays(f);const key=folderKey(kind);const selected=$(".folderPick").filter(x=>x.checked).map(x=>x.dataset.id);f[key]=selected;saveMeta(true).catch(()=>{});}
+    closeModal();showFolder(id);return;
+  }
+  if(a==="deleteFolder"){
+    const f=folderById(id);
+    if(f&&confirm('Delete this folder? Your music will stay in the library.')){state.folders=state.folders.filter(x=>x.id!==id);saveMeta(true).catch(()=>{});state.view="folders";state.detail=null;render();}
+    return;
+  }
   if(a==="openLibraryTools"){openLibraryTools();return}
   if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
   if(a==="exportPreset"){closeSheet();exportPreset();return}

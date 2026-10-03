@@ -116,6 +116,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 <div class="busyShade" id="busyShade"><div class="busyCard"><div class="busySpinner"></div><strong id="busyTitle">Working…</strong><span id="busyText">Please keep Localify open while this finishes.</span><button class="btn" id="cancelBusyBtn" type="button">Cancel</button></div></div>
 <div class="toast" id="toast"></div>
 <input id="audioPicker" type="file" hidden multiple accept="audio/*,.mp3,.m4a,.mp4,.aac,.flac,.wav,.ogg,.oga,.opus,.webm,.aiff,.aif,.alac,.caf">
+<input id="folderPicker" type="file" hidden webkitdirectory directory multiple accept="audio/*,.mp3,.m4a,.mp4,.aac,.flac,.wav,.ogg,.oga,.opus,.webm,.aiff,.aif,.alac,.caf">
 <input id="imagePicker" type="file" hidden accept="image/*">
 <input id="presetPicker" type="file" hidden accept="*/*">
 <audio id="audio" preload="metadata" playsinline></audio>
@@ -132,7 +133,7 @@ const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/co
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
 let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
-let state={version:2,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{loggedIn:false,name:""},detail:null};
+let state={version:3,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],folders:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{loggedIn:false,name:""},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function uid(){return crypto.randomUUID?crypto.randomUUID():"m-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}
@@ -346,11 +347,70 @@ async function restore(){
  }
  if(!meta)return false;
  state=Object.assign(state,meta);
+ state.folders=Array.isArray(state.folders)?state.folders:[];
+ state.folders.forEach(ensureFolderArrays);
  state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},state.settings||{});
  normalizeStats();normalizeProfile();
  state.tracks=Array.isArray(state.tracks)?state.tracks:[];state.albums=Array.isArray(state.albums)?state.albums:[];state.artists=Array.isArray(state.artists)?state.artists:[];state.playlists=Array.isArray(state.playlists)?state.playlists:[];state.liked=Array.isArray(state.liked)?state.liked:[];state.recent=Array.isArray(state.recent)?state.recent:[];state.queue=Array.isArray(state.queue)?state.queue:[];state.currentId=state.currentId||null;state.detail=null;
  if(fromBackup)try{await idbPut("meta","app",cloneMeta())}catch{}
  return true;
+}
+function ensureFolderArrays(f){if(!f)return;f.albumIds=Array.isArray(f.albumIds)?f.albumIds:[];f.trackIds=Array.isArray(f.trackIds)?f.trackIds:[];f.artistIds=Array.isArray(f.artistIds)?f.artistIds:[];f.playlistIds=Array.isArray(f.playlistIds)?f.playlistIds:[]}
+function folderById(id){return state.folders.find(x=>x.id===id)||null}
+function createFolderEntity(name="New folder"){const f={id:uid(),name:String(name||"New folder").trim()||"New folder",albumIds:[],trackIds:[],artistIds:[],playlistIds:[],createdAt:Date.now()};state.folders.push(f);return f}
+function folderKey(kind){return kind==="albums"?"albumIds":kind==="songs"?"trackIds":kind==="artists"?"artistIds":"playlistIds"}
+function folderItems(f,kind){ensureFolderArrays(f);const ids=f[folderKey(kind)]||[];if(kind==="albums")return ids.map(id=>state.albums.find(x=>x.id===id)).filter(Boolean);if(kind==="songs")return ids.map(id=>state.tracks.find(x=>x.id===id)).filter(Boolean);if(kind==="artists")return ids.map(id=>state.artists.find(x=>x.id===id)).filter(Boolean);return ids.map(id=>state.playlists.find(x=>x.id===id)).filter(Boolean)}
+function folderToggleItem(f,kind,id,on){ensureFolderArrays(f);const k=folderKey(kind);if(on){if(!f[k].includes(id))f[k].push(id)}else f[k]=f[k].filter(x=>x!==id)}
+function folderCollage(f){
+ const albums=folderItems(f,"albums").slice(0,4);
+ if(!albums.length)return '<div class="folderCollage"><div>'+icon("folder")+'</div></div>';
+ return '<div class="folderCollage">'+[0,1,2,3].map(i=>{const a=albums[i];if(!a)return '<div class="folderTile emptyTile">'+icon("albums")+'</div>';const cover=albumCover(a);return '<div class="folderTile">'+(cover?'<img src="'+esc(cover)+'" alt="">':icon("albums"))+'</div>'}).join("")+'</div>';
+}
+function folderCard(f){
+ const albums=folderItems(f,"albums"),songs=folderItems(f,"songs"),artists=folderItems(f,"artists"),playlists=folderItems(f,"playlists");
+ return '<div class="card folderCard" data-action="openFolder" data-id="'+esc(f.id)+'">'+folderCollage(f)+'<div class="title">'+esc(f.name)+'</div><div class="sub">'+albums.length+' albums • '+songs.length+' songs • '+artists.length+' artists • '+playlists.length+' playlists</div></div>';
+}
+function editFolder(id){
+ const f=id?folderById(id):null;
+ openModal('<div class="modalHead"><h2>'+(f?"Rename folder":"New folder")+'</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="form"><div class="field"><label>Folder name</label><input id="folderNameInput" maxlength="80" value="'+esc(f?.name||"")+'" placeholder="My music"></div></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveFolder" data-id="'+esc(f?.id||"")+'">'+(f?"Save":"Create")+'</button></div>');
+}
+function saveFolder(id){
+ const n=$("#folderNameInput")?.value.trim();if(!n){toast("Give the folder a name.");return}
+ const f=id?folderById(id):createFolderEntity(n);if(!f)return;f.name=n;saveMeta(true).catch(()=>{});closeModal();render();
+}
+function openFolderAddMenu(id){
+ const f=folderById(id);if(!f)return;
+ openModal('<div class="modalHead"><h2>Add to '+esc(f.name)+'</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="sheetGrid">'+
+  '<button class="sheetItem" data-action="folderChoose" data-id="'+esc(id)+'" data-kind="albums">'+icon("albums")+'<span>Albums</span></button>'+
+  '<button class="sheetItem" data-action="folderChoose" data-id="'+esc(id)+'" data-kind="songs">'+icon("library")+'<span>Songs</span></button>'+
+  '<button class="sheetItem" data-action="folderChoose" data-id="'+esc(id)+'" data-kind="artists">'+icon("artists")+'<span>Artists</span></button>'+
+  '<button class="sheetItem" data-action="folderChoose" data-id="'+esc(id)+'" data-kind="playlists">'+icon("playlists")+'<span>Playlists</span></button></div>');
+}
+function openFolderPicker(id,kind){
+ const f=folderById(id),all=kind==="albums"?state.albums:kind==="songs"?state.tracks:kind==="artists"?state.artists:state.playlists;
+ if(!f)return;
+ const label=kind==="albums"?"Albums":kind==="songs"?"Songs":kind==="artists"?"Artists":"Playlists";
+ const rows=all.slice(0,400).map(x=>{
+  const title=kind==="songs"?trackTitle(x):kind==="albums"?x.title:kind==="artists"?x.name:x.name;
+  const sub=kind==="songs"?artistText(x)+" • "+albumName(x):kind==="albums"?(x.artist||NONE):(kind==="artists"?artistTextForProfile?.(x)||"":(x.trackIds||[]).length+" songs");
+  return '<label class="folderPickRow"><input type="checkbox" class="folderPick" data-id="'+esc(x.id)+'" '+(f[folderKey(kind)]?.includes(x.id)?"checked":"")+'><span><strong>'+esc(title)+'</strong><small>'+esc(sub||"")+'</small></span></label>';
+ }).join("");
+ openModal('<div class="modalHead"><h2>Add '+label+'</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="folderPickerList">'+(rows||'<div class="empty">Nothing to add yet.</div>')+'</div><div class="modalFoot"><button class="btn" data-action="folderBack" data-id="'+esc(id)+'">Back</button><button class="btn primary" data-action="folderSaveItems" data-id="'+esc(id)+'" data-kind="'+esc(kind)+'">Save</button></div>');
+}
+function showFolder(id){
+ const f=folderById(id);if(!f)return;ensureFolderArrays(f);state.view="folder";state.detail=id;
+ const albums=folderItems(f,"albums"),songs=folderItems(f,"songs"),artists=folderItems(f,"artists"),playlists=folderItems(f,"playlists");
+ const albumHtml=albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty">No albums in this folder.</div>';
+ const songHtml=songs.length?'<div class="list">'+songs.map(songRow).join("")+'</div>':'<div class="empty">No songs in this folder.</div>';
+ const artistHtml=artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'';
+ const playlistHtml=playlists.length?'<div class="grid">'+playlists.map(playlistCard).join("")+'</div>':'';
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>'+esc(f.name)+'</h1><p>'+albums.length+' albums • '+songs.length+' songs • '+artists.length+' artists • '+playlists.length+' playlists</p></div><div><button class="btn small" data-action="folderAdd" data-id="'+esc(id)+'">'+icon("plus")+'Add items</button> <button class="btn small" data-action="editFolder" data-id="'+esc(id)+'">'+icon("edit")+'Rename</button></div></div>'+
+  '<div class="section"><div class="sectionHead"><strong>Albums</strong><span>'+albums.length+'</span></div>'+albumHtml+'</div>'+
+  (songs.length?'<div class="section"><div class="sectionHead"><strong>Songs</strong><span>'+songs.length+'</span></div>'+songHtml+'</div>':'')+
+  (artists.length?'<div class="section"><div class="sectionHead"><strong>Artists</strong><span>'+artists.length+'</span></div>'+artistHtml+'</div>':'')+
+  (playlists.length?'<div class="section"><div class="sectionHead"><strong>Playlists</strong><span>'+playlists.length+'</span></div>'+playlistHtml+'</div>':'')+
+  '<div class="section"><button class="btn danger" data-action="deleteFolder" data-id="'+esc(id)+'">'+icon("trash")+'Delete folder</button></div>';
+ bindCovers();
 }
 function findArtist(name){const k=String(name||"").trim().toLowerCase();return state.artists.find(a=>String(a.name||"").trim().toLowerCase()===k)||null}
 function getArtistId(name){if(!name||/^unknown artist$/i.test(name)||/^none$/i.test(name))return null;return findArtist(name)?.id||null}
@@ -494,6 +554,8 @@ function renderPlaylists(){
 function renderMore(){
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Everything that does not need a permanent tab.</p></div></div>'+
  '<div class="morePanel">'+
+ '<button class="btn" data-action="openFolders">'+icon("folder")+'Folders</button>'+
+ '<button class="btn" data-action="createFolder">'+icon("plus")+'New folder</button>'+
  '<button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button>'+
  '<button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button>'+
  '<button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button>'+
@@ -506,8 +568,14 @@ function renderMore(){
 function render(){
  renderProfileButton();
  $("#nav").innerHTML=navHtml();
- if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else renderMore();
+ if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else if(state.view==="folders")renderFolders();else if(state.view==="folder"&&state.detail)showFolder(state.detail);else renderMore();
  renderPlayer();
+}
+function renderFolders(){
+ const shown=state.folders;
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Folders</h1><p>Organize albums, songs, artists and playlists.</p></div><button class="btn primary icon" data-action="createFolder" aria-label="Create folder">'+icon("plus")+'</button></div>'+
+ (shown.length?'<div class="grid">'+shown.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Create one to group your music.</div>');
+ bindCovers();
 }
 function bindCovers(){
  $$("[data-cover-id]").forEach(el=>{const t=state.tracks.find(x=>x.id===el.dataset.coverId);if(t)coverFor(t).then(u=>{if(el.isConnected&&u)el.innerHTML='<img src="'+esc(u)+'" alt="">'}).catch(()=>{})});

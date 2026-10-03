@@ -678,7 +678,7 @@ async function addFiles(files,context={}){
  busyShow("Importing music","Preparing "+files.length+" file"+(files.length===1?"":"s")+"…");
  try{
   await persistRequest();
-  let done=0;
+  let done=0;const added=[];
   for(const file of files){
    if(!file.type.startsWith("audio/")&&!/\.(mp3|m4a|mp4|aac|flac|wav|ogg|oga|opus|webm|aiff|aif|alac|caf)$/i.test(file.name))continue;
    busyUpdate("Importing music",(done+1)+" / "+files.length+" • "+file.name);
@@ -714,10 +714,17 @@ async function addFiles(files,context={}){
    const url=URL.createObjectURL(file),probe=new Audio();probe.preload="metadata";probe.src=url;
    await new Promise(resolve=>{let x=()=>{cleanup();resolve()};let cleanup=()=>{probe.removeEventListener("loadedmetadata",x);probe.removeEventListener("error",x)};probe.addEventListener("loadedmetadata",x);probe.addEventListener("error",x);setTimeout(x,5000)});
    t.duration=Number(probe.duration)||0;URL.revokeObjectURL(url);
-   await saveAudio(t,file);state.tracks.push(t);done++;
+   await saveAudio(t,file);state.tracks.push(t);added.push(t);done++;
+  }
+  if(context.directoryImport&&added.length){
+    const name=String(context.folderName||"Imported folder").trim()||"Imported folder";
+    const f=createFolderEntity(name);
+    f.trackIds=added.map(t=>t.id);
+    f.albumIds=[...new Set(added.map(t=>t.albumId).filter(Boolean))];
+    f.artistIds=[...new Set(added.flatMap(t=>t.artistIds||[]).filter(Boolean))];
   }
   state.tracks=sortTracks(state.tracks);
-  await saveMeta(true);render();toast(done+" song"+(done===1?"":"s")+" added.");
+  await saveMeta(true);render();toast(context.directoryImport?done+" songs imported into "+(context.folderName||"folder")+".":done+" song"+(done===1?"":"s")+" added.");
  }catch(e){console.error(e);toast("Import stopped: "+(e?.message||"unknown error"))}finally{busyHide()}
 }
 
@@ -739,6 +746,7 @@ function showDetail(type,id){
  }
 }
 async function playTrack(id){
+ if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{};
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
  recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
@@ -779,6 +787,7 @@ function renderPlayer(){
  $("#nowTitle").textContent=t?trackTitle(t):"Nothing playing";$("#nowArtist").textContent=t?artistText(t):"Choose a song";
  const artEl=$("#nowArt");artEl.innerHTML=t?icon("library"):icon("play");if(t)coverFor(t).then(u=>{if(u&&state.currentId===t.id)artEl.innerHTML='<img src="'+esc(u)+'" alt="">'}).catch(()=>{});
  const playing=!!t&&!audio.paused;$("#playBtn").innerHTML=icon(playing?"pause":"play");$("#progress").value=audio.duration?Math.round(audio.currentTime/audio.duration*1000):0;
+ try{if("mediaSession"in navigator)navigator.mediaSession.playbackState=playing?"playing":t?"paused":"none"}catch{}
 }
 function storageInfo(){
  const p=navigator.storage?.estimate?navigator.storage.estimate():Promise.resolve({});

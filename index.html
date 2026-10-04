@@ -277,6 +277,7 @@ async function opfsFile(id,writeBlob){
  return await fh.getFile();
 }
 const AUDIO_CHUNK_SIZE=2*1024*1024;
+const AUDIO_CHUNK_SIZES=[2*1024*1024,1024*1024,512*1024,256*1024];
 const AUDIO_V4_PREFIX="v4/";
 function binaryArrayBuffer(value){
  if(value instanceof ArrayBuffer)return value;
@@ -285,6 +286,7 @@ function binaryArrayBuffer(value){
 }
 function audioV4Key(id,part){return AUDIO_V4_PREFIX+String(id)+"/"+String(part)}
 function audioV4Prefix(id){return AUDIO_V4_PREFIX+String(id)+"/"}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function idbDeleteAudioV4(id){
  if(!db)return;
  const prefix=audioV4Prefix(id);
@@ -303,7 +305,21 @@ async function idbDeleteAudioV4(id){
  });
  try{await idbDel("audioMetaV4",id)}catch{}
 }
-async function idbPutV4Part(key,data){await idbPut("audioChunksV4",key,binaryArrayBuffer(data))}
+async function idbPutV4Part(key,data){
+ const input=new Uint8Array(data);
+ const safeCopy=input.slice().buffer;
+ let lastError=null;
+ for(let attempt=0;attempt<4;attempt++){
+  try{
+   await idbPut("audioChunksV4",key,safeCopy);
+   return true;
+  }catch(e){
+   lastError=e;
+   if(attempt<3)await sleep(75*(attempt+1));
+  }
+ }
+ throw lastError||new Error("IndexedDB audio write failed.");
+}
 async function withStorageWriteLock(fn){
  const previous=storageWriteLock;
  let release;
@@ -311,10 +327,10 @@ async function withStorageWriteLock(fn){
  await previous;
  try{return await fn()}finally{release()}
 }
-async function writeArrayBufferStreamToV4(id,stream,type="application/octet-stream"){
+async function writeArrayBufferStreamToV4(id,stream,type="application/octet-stream",chunkSize=AUDIO_CHUNK_SIZE){
  await idbDeleteAudioV4(id);
  const reader=stream.getReader();
- let part=0,total=0,buf=new Uint8Array(AUDIO_CHUNK_SIZE),used=0;
+ let part=0,total=0,buf=new Uint8Array(chunkSize),used=0;
  try{
   while(true){
    const step=await reader.read();
@@ -322,12 +338,12 @@ async function writeArrayBufferStreamToV4(id,stream,type="application/octet-stre
    const bytes=new Uint8Array(binaryArrayBuffer(step.value));
    let off=0;
    while(off<bytes.length){
-    const take=Math.min(AUDIO_CHUNK_SIZE-used,bytes.length-off);
+    const take=Math.min(chunkSize-used,bytes.length-off);
     buf.set(bytes.subarray(off,off+take),used);used+=take;off+=take;total+=take;
-    if(used===AUDIO_CHUNK_SIZE){
+    if(used===chunkSize){
      await idbPutV4Part(audioV4Key(id,part++),buf.buffer.slice(0,used));
-     buf=new Uint8Array(AUDIO_CHUNK_SIZE);used=0;
-     if(part%8===0)await new Promise(resolve=>setTimeout(resolve,0));
+     buf=new Uint8Array(chunkSize);used=0;
+     if(part%8===0)await sleep(0);
     }
    }
   }
@@ -340,10 +356,27 @@ async function writeArrayBufferStreamToV4(id,stream,type="application/octet-stre
  }
 }
 async function writeBlobToIDBChunksV4(id,blob,type="application/octet-stream"){
- return withStorageWriteLock(()=>writeArrayBufferStreamToV4(id,blob.stream(),type));
+ return withStorageWriteLock(async()=>{
+  let lastError=null;
+  for(const size of AUDIO_CHUNK_SIZES){
+   try{return await writeArrayBufferStreamToV4(id,blob.stream(),type,size)}
+   catch(e){lastError=e;console.warn("IndexedDB audio write failed; retrying with smaller chunks",size,e)}
+  }
+  throw lastError||new Error("IndexedDB audio write failed.");
+ });
 }
 async function writeStreamToIDBChunksV4(id,stream,type="application/octet-stream"){
- return withStorageWriteLock(()=>writeArrayBufferStreamToV4(id,stream,type));
+ return withStorageWriteLock(()=>writeArrayBufferStreamToV4(id,stream,type,AUDIO_CHUNK_SIZE));
+}
+async function writeZipStreamToIDBChunksV4(id,file,e,type="audio/*"){
+ return withStorageWriteLock(async()=>{
+  let lastError=null;
+  for(const size of AUDIO_CHUNK_SIZES){
+   try{return await writeArrayBufferStreamToV4(id,zipEntryStream(file,e),type,size)}
+   catch(err){lastError=err;console.warn("IndexedDB preset write failed; retrying with smaller chunks",size,err)}
+  }
+  throw lastError||new Error("IndexedDB preset write failed.");
+ });
 }
 async function loadAudioV4(t){
  try{

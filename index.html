@@ -232,7 +232,20 @@ function openDB(){
 }
 function idbGet(store,key){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readonly").objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 function idbGetAll(store,range){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readonly").objectStore(store).getAll(range);r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
-function idbPut(store,key,value){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readwrite").objectStore(store).put(value,key);r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+function idbPut(store,key,value){
+ return new Promise((res,rej)=>{
+  let settled=false,tx,req;
+  const fail=e=>{if(settled)return;settled=true;rej(e||new Error("IndexedDB write failed."))};
+  try{
+   tx=db.transaction(store,"readwrite");
+   req=tx.objectStore(store).put(value,key);
+   req.onsuccess=()=>{if(!settled)settled=true,res(true)};
+   req.onerror=()=>fail(req.error);
+   tx.onerror=()=>fail(tx.error);
+   tx.onabort=()=>fail(tx.error||new DOMException("IndexedDB transaction aborted.","AbortError"));
+  }catch(e){fail(e)}
+ });
+}
 function idbDel(store,key){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readwrite").objectStore(store).delete(key);r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
 async function idbDeleteAudioChunks(id){
  if(!db)return;

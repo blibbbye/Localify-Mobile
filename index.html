@@ -1482,12 +1482,10 @@ async function importPreset(file){
   },0);
   const estimate=navigator.storage?.estimate?await navigator.storage.estimate():null;
   const quota=Number(estimate?.quota)||0,used=Number(estimate?.usage)||0,free=Math.max(0,quota-used);
-  externalStorageMode=false;
-  if(quota&&audioBytes>free){
-   if(externalDir){
-    externalStorageMode=true;
-    toast("Using your selected device folder for this large preset.");
-   }else if(typeof window.showDirectoryPicker==="function"){
+  externalStorageMode=!!externalDir;
+  const LARGE_IMPORT_BYTES=512*1024*1024;
+  if(!externalDir&&((quota&&audioBytes>free)||audioBytes>=LARGE_IMPORT_BYTES)){
+   if(typeof window.showDirectoryPicker==="function"){
     busyHide();await new Promise(resolve=>setTimeout(resolve,120));
     const useDevice=await new Promise(resolve=>{
      openModal('<div class="modalHead"><h2>Large preset</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="notice">This preset needs about '+formatBytes(audioBytes)+' of audio, but browser storage only has about '+formatBytes(free)+' free. Choose a folder on your device so the audio does not use the browser storage quota.</div><div class="modalFoot"><button class="btn" id="largeCancel">Cancel</button><button class="btn primary" id="largeChoose">'+icon("folder")+'Choose device folder</button></div>');
@@ -1499,7 +1497,7 @@ async function importPreset(file){
     busyShow("Importing preset","Starting…");
     busyUpdate("Importing preset","Preparing "+manifest.tracks.length+" songs…",2);
    }else{
-    throw new Error("This browser only has about "+formatBytes(free)+" free site storage, but the preset needs about "+formatBytes(audioBytes)+" of audio. Open Localify in a browser that supports device-folder storage or free more site storage.");
+    throw new Error("This browser cannot provide enough local storage for this preset ("+formatBytes(audioBytes)+"). Use Chrome/Edge with device-folder storage, then choose a folder for Localify audio.");
    }
   }
  
@@ -1581,7 +1579,7 @@ async function importPreset(file){
     }
    }else if(t.hasAudio)throw new Error("Missing audio for "+title);
    t._blob=null;t.blob=null;state.tracks.push(t);trackIdMap.set(originalId,t.id);importedTrackIds.push(t.id);
-   if(done%100===0)await saveMeta(false);
+   if(done%25===0){try{await saveMeta(false)}catch(checkpointError){console.warn("Import checkpoint failed; keeping audio files and continuing",checkpointError)}}
    if(done%8===0)await new Promise(resolve=>setTimeout(resolve,0));
   }
 

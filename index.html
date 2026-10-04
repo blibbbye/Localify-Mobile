@@ -80,7 +80,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 .pill{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #29323c;background:#151b21;border-radius:99px;font-size:9px;color:#8b96a1;margin:4px 4px 0 0}
 .morePanel{display:grid;gap:7px}.morePanel .btn{width:100%;justify-content:flex-start}
 .notice{padding:10px 11px;border-radius:12px;background:rgba(125,211,252,.06);border:1px solid rgba(125,211,252,.16);color:#9eb7c6;font-size:10px;line-height:1.45}
-.storageMeter{height:7px;border-radius:99px;background:#202932;overflow:hidden;margin-top:8px}.storageMeter div{height:100%;background:var(--accent);width:0}
+.storageMeter{height:7px;border-radius:99px;background:#202932;overflow:hidden;margin-top:8px}.storageMeter div{height:100%;background:var(--accent);width:0}.toolbar{display:flex;gap:6px;overflow:auto;padding:2px 0 4px;margin:8px 0}.toolbar button{flex:none;min-height:35px;padding:7px 11px;border:1px solid #29343e;border-radius:999px;background:#12181e;color:#7f8b97;font-size:11px;font-weight:850}.toolbar button.active{background:rgba(125,211,252,.1);border-color:#385466;color:var(--accent)}
 @media (min-width:700px){main{padding-left:18px;padding-right:18px}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.nav{grid-template-columns:repeat(6,1fr)}.nav button{font-size:10px}.player{grid-template-columns:minmax(0,1fr) auto}.detailHero{grid-template-columns:180px minmax(0,1fr)}.detailArt{width:180px;height:180px}}
 @media (max-width:430px){.detailHero{grid-template-columns:94px minmax(0,1fr)}.detailArt{width:94px;height:94px}.detailTitle{font-size:22px}.hero h2{font-size:33px}}
 /* Mobile interaction safety */
@@ -169,6 +169,16 @@ function icon(name){
  return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+(p[name]||p.more2)+'</svg>';
 }
 function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),3300)}
+let mobileAudioUnlocked=false;
+function unlockMobileAudio(){
+ if(mobileAudioUnlocked)return;
+ try{
+  const a=new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIABAAgAZGF0YQAAAAA=");
+  a.muted=true;a.playsInline=true;
+  const p=a.play();
+  if(p?.then)p.then(()=>{a.pause();mobileAudioUnlocked=true}).catch(()=>{});
+ }catch{}
+}
 function busyShow(title,text){busy=true;operationController=new AbortController();$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";$("#busyShade").classList.add("open")}
 function busyUpdate(title,text){$("#busyTitle").textContent=title;$("#busyText").textContent=text}
 function busyHide(){busy=false;operationController=null;$("#busyShade").classList.remove("open")}
@@ -348,11 +358,14 @@ function openProfile(){
 }
 function editProfile(){
  normalizeProfile();
- openModal('<div class="modalHead"><h2>Edit profile</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="form"><div class="coverPick"><div class="coverPickPreview" id="profilePreview">'+(state.profile.avatar?'<img src="'+esc(state.profile.avatar)+'" alt="">':icon("user"))+'</div><div><button class="btn" data-action="changeProfilePicture">'+icon("upload")+'Choose profile picture</button><div class="loginHint">The image is saved locally with your Localify profile.</div></div></div><div class="field"><label>Display name</label><input id="editProfileName" maxlength="40" value="'+esc(state.profile.name||"Localify User")+'" placeholder="Your name"></div></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveProfile">Save</button></div>');
+ window.__pendingProfileAvatar=state.profile.avatar||null;
+ openModal('<div class="modalHead"><h2>Edit profile</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="form"><div class="coverPick"><div class="coverPickPreview" id="profilePreview">'+(state.profile.avatar?'<img src="'+esc(state.profile.avatar)+'" alt="">':icon("user"))+'</div><div><button class="btn" data-action="changeProfilePicture">'+icon("upload")+'Choose profile picture</button><div class="loginHint">The picture and name are saved locally with your Localify profile.</div></div></div><div class="field"><label>Display name</label><input id="editProfileName" maxlength="40" value="'+esc(state.profile.name||"Localify User")+'" placeholder="Your name"></div></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveProfile">Save</button></div>');
 }
 async function saveProfile(){
  const n=$("#editProfileName")?.value.trim()||"Localify User";
  state.profile.name=n.slice(0,40);
+ state.profile.avatar=window.__pendingProfileAvatar||null;
+ window.__pendingProfileAvatar=undefined;
  await saveMeta(true);closeModal();renderProfileButton();openProfile();
 }
 async function saveMeta(writeBackup=true){
@@ -954,7 +967,7 @@ function bindEvents(){
   const root=(files[0]?.webkitRelativePath||"").split("/")[0]||"Imported folder";
   addFiles(files,{folderName:root,directoryImport:true});
  });
- $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{state.profile.avatar=await fileToDataUrl(f);window.__editingProfilePicture=false;await saveMeta(true);closeModal();openProfile();}catch(err){toast("Could not save that profile picture.");}return}window.__pickedImage=f;toast("Image selected.");});
+ $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{window.__pendingProfileAvatar=await fileToDataUrl(f);const el=$("#profilePreview");if(el)el.innerHTML='<img src="'+esc(window.__pendingProfileAvatar)+'" alt="">';window.__editingProfilePicture=false;}catch(err){window.__editingProfilePicture=false;toast("Could not read that profile picture.");}return}window.__pickedImage=f;toast("Image selected.");});
  $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
@@ -965,6 +978,7 @@ function bindEvents(){
  audio.addEventListener("ended",()=>{recordListeningProgress();next()});
 
  document.addEventListener("click",async e=>{
+  unlockMobileAudio();
   if(e.target.closest?.("#cancelBusyBtn")){cancelBusy();return}
   const viewBtn=e.target.closest?.("[data-view]");
   if(viewBtn){

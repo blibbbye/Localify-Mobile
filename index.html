@@ -1064,7 +1064,7 @@ function bindEvents(){
   addFiles(files,{folderName:root,directoryImport:true});
  });
  $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{window.__pendingProfileAvatar=await fileToDataUrl(f);const el=$("#profilePreview");if(el)el.innerHTML='<img src="'+esc(window.__pendingProfileAvatar)+'" alt="">';window.__editingProfilePicture=false;}catch(err){window.__editingProfilePicture=false;toast("Could not read that profile picture.");}return}window.__pickedImage=f;toast("Image selected.");});
- $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
+ $("#presetPicker").addEventListener("change",e=>{const f=e.target.files?.[0]||null;e.target.value="";if(!f)return;importPreset(f).catch(err=>{console.error("preset import picker",err);busyHide();toast(err?.message||"Could not import preset.")})});
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
  $("#prevBtn").onclick=prev; $("#playerMoreBtn")?.addEventListener("click",()=>openPlayerControls());$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};

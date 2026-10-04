@@ -48,3 +48,7 @@ node scripts/prepare-android.cjs
 cd android && gradlew.bat assembleDebug
 
 The APK will be under android/app/build/outputs/apk/debug/.
+
+## Storage v4
+
+The mobile web app uses OPFS as the primary audio store when the browser supports it. The fallback uses 2 MB binary chunks in IndexedDB rather than storing large File/Blob objects as single records. Existing Localify Mobile v2 audio remains readable and is migrated lazily when played. Large preset imports stream ZIP audio directly into storage, checkpoint metadata during the import, keep completed Add-mode songs after an error, and make Set-mode replacement rollback-safe. Browser storage still has a device/browser quota; no website can provide literally unlimited storage.

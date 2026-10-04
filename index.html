@@ -28,14 +28,14 @@ button{border:0}
 .brandText strong{font-size:13px;letter-spacing:-.45px}.brandText small{font-size:7px;letter-spacing:.12em;color:#74808e;margin-top:3px}
 .brandLogo{width:34px;height:34px;border-radius:9px;background:#7dd3fc;color:#081017;display:grid;place-items:center;font-weight:1000;font-size:19px;line-height:1;box-shadow:0 8px 22px rgba(125,211,252,.18);flex:none}.brandLogo span{display:block}.brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
 .topRight{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
-.profileBtn{height:38px;max-width:150px;padding:0 11px;border-radius:12px;border:1px solid #2b3540;background:#151b21;color:#dce6ed;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;overflow:hidden}
+.profileBtn{height:44px;max-width:150px;padding:0 11px;border-radius:12px;border:1px solid #2b3540;background:#151b21;color:#dce6ed;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;overflow:hidden}
 .profileBtn:hover{background:#1b222a;border-color:#3a4652}
 /* Keep the profile/PFP control at the absolute far right of the top bar. */
 .topRight{flex:1}
 .brand{order:1}
 .profileBtn{order:2;margin-left:auto}
 
-.profileBtn .profileIcon{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;flex:none;color:#9ee5ff;background:#24313c}
+.profileBtn .profileIcon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:#9ee5ff;background:#24313c}
 .profileBtn .profileIcon .i{width:15px;height:15px;margin:0}
 .profileBtnText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profileCard{display:grid;gap:14px}
@@ -1129,7 +1129,7 @@ function showDetail(type,id){
   bindCovers();
  }else if(type==="artist"){
   const item=state.artists.find(x=>x.id===id);const ts=tracksForArtist(id);if(!item)return;
-  $("#main").innerHTML='<div class="detailHero"><div class="detailArt">'+(item.image?'<img src="'+esc(item.image)+'" alt="">':icon("artists"))+'</div><div><h1 class="detailTitle">'+esc(item.name)+'</h1><div class="detailSub">'+ts.length+' songs • '+state.albums.filter(x=>(Array.isArray(x.artistIds)&&x.artistIds.includes(id))||x.artistNames===item.name).length+' albums</div><div class="actions"><button class="btn primary" data-action="playArtist" data-id="'+esc(id)+'">'+icon("play")+'Play</button><button class="btn" data-action="addSongs">'+icon("plus")+'Add songs</button></div></div></div><div class="section"><div class="list">'+(ts.length?ts.map(songRow).join(""):'<div class="empty">No songs yet.</div>')+'</div></div>';
+  $("#main").innerHTML='<div class="detailHero"><div class="detailArt">'+(item.image?'<img src="'+esc(item.image)+'" alt="">':icon("artists"))+'</div><div><h1 class="detailTitle">'+esc(item.name)+'</h1><div class="detailSub">'+ts.length+' songs • '+state.albums.filter(x=>(Array.isArray(x.artistIds)&&x.artistIds.includes(id))||x.artistNames===item.name).length+' albums</div><div class="actions"><button class="btn primary" data-action="playArtist" data-id="'+esc(id)+'">'+icon("play")+'Play</button><button class="btn" data-action="addSongs">'+icon("plus")+'Add songs</button><button class="btn" data-action="editArtist" data-id="'+esc(id)+'">'+icon("edit")+'Edit</button></div></div></div><div class="section"><div class="list">'+(ts.length?ts.map(songRow).join(""):'<div class="empty">No songs yet.</div>')+'</div></div>';
   bindCovers();
  }else{
   const item=state.playlists.find(x=>x.id===id);if(!item)return;const ts=tracksForPlaylist(item);

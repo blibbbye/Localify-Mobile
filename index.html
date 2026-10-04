@@ -852,7 +852,7 @@ async function playTrack(id){
  currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
  state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));if(!state.queue.includes(id))state.queue.push(id);state.queueIndex=state.queue.indexOf(id);
  audio.volume=state.settings.volume??.9;updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
- try{await audio.play();recordPlay(t);render()}catch(e){toast("Press play again to start audio.");}
+ try{await audio.play();recordPlay(t);if(state.detail?.type==="folder")showFolder(state.detail.id);else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);else render()}catch(e){toast("Press play again to start audio.");}
 }
 function queuePlay(id){const t=state.tracks.find(x=>x.id===id);if(!t)return;state.queue=[id,...state.queue.filter(x=>x!==id)];state.queueIndex=0;playTrack(id)}
 function playList(ts,start){
@@ -1172,7 +1172,7 @@ function openPlayerControls(){
      '<button class="sheetItem" data-action="playerRepeat"><span class="controlBadge">'+esc((state.settings.repeat||"off").toUpperCase())+'</span><span>Repeat</span></button>'+
    '</div>'+
    '<div class="playerVolume"><div class="playerVolumeHead"><strong>Volume</strong><span id="playerVolumeValue">'+vol+'%</span></div><input id="playerVolumeRange" type="range" min="0" max="1" step=".01" value="'+String(state.settings.volume??.9)+'"></div>');
- $("#playerVolumeRange").oninput=e=>{const v=Number(e.target.value);state.settings.volume=v;audio.volume=v;$("#playerVolumeValue").textContent=Math.round(v*100)+"%";scheduleSave()};
+ const setPlayerVolume=e=>{const v=Math.max(0,Math.min(1,Number(e.target.value)||0));state.settings.volume=v;audio.volume=v;const label=$("#playerVolumeValue");if(label)label.textContent=Math.round(v*100)+"%";scheduleSave()}; const pvr=$("#playerVolumeRange");if(pvr){pvr.addEventListener("input",setPlayerVolume);pvr.addEventListener("change",setPlayerVolume)}
 }
 function openPlayerEffects(){
  closeSheet();

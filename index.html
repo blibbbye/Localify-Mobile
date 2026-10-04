@@ -402,8 +402,15 @@ function folderItems(f,kind){ensureFolderArrays(f);const ids=f[folderKey(kind)]|
 function folderToggleItem(f,kind,id,on){ensureFolderArrays(f);const k=folderKey(kind);if(on){if(!f[k].includes(id))f[k].push(id)}else f[k]=f[k].filter(x=>x!==id)}
 function folderCollage(f){
  const albums=folderItems(f,"albums").slice(0,4);
- if(!albums.length)return '<div class="folderCollage"><div>'+icon("folder")+'</div></div>';
- return '<div class="folderCollage">'+[0,1,2,3].map(i=>{const a=albums[i];if(!a)return '<div class="folderTile emptyTile">'+icon("albums")+'</div>';const cover=albumCover(a);return '<div class="folderTile">'+(cover?'<img src="'+esc(cover)+'" alt="">':icon("albums"))+'</div>'}).join("")+'</div>';
+ const songs=folderItems(f,"songs").slice(0,4);
+ const items=albums.length?albums:songs;
+ if(!items.length)return '<div class="folderCollage"><div>'+icon("folder")+'</div></div>';
+ return '<div class="folderCollage">'+[0,1,2,3].map(i=>{
+  const item=items[i];
+  if(!item)return '<div class="folderTile emptyTile">'+icon(albums.length?"albums":"library")+'</div>';
+  const cover=albums.length?albumCover(item):(item.cover||"");
+  return '<div class="folderTile" data-folder-preview="'+esc(item.id)+'" data-folder-preview-kind="'+(albums.length?"album":"song")+'">'+(cover?'<img src="'+esc(cover)+'" alt="">':icon(albums.length?"albums":"library"))+'</div>';
+ }).join("")+'</div>';
 }
 function folderCard(f){
  const albums=folderItems(f,"albums"),songs=folderItems(f,"songs"),artists=folderItems(f,"artists"),playlists=folderItems(f,"playlists");

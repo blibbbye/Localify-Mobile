@@ -404,6 +404,7 @@ if(!source.includes('"LocalifyNative"')){
         super.onDestroy();
     }
 
+  `;
 
   source=source.slice(0,open+1)+bridge+source.slice(open+1);
   fs.writeFileSync(mainActivity,source,"utf8");

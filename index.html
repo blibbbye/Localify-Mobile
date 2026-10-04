@@ -127,13 +127,13 @@ main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px
 "use strict";
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const NONE="None";
-const DB_NAME="localify-mobile-v2",DB_VER=2;
+const DB_NAME="localify-mobile-v2",DB_VER=3;
 const META_KEY="localify-mobile-v2-meta";
 const BACKUP_KEY="localify-mobile-v2-backup";
 const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/covers.json";
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
-let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
+let db=null,rootDir=null,externalDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null,externalStorageMode=false;
 let state={version:3,view:"home",search:"",searchFilter:"all",tracks:[],albums:[],artists:[],playlists:[],folders:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{name:"Localify User",avatar:null},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
@@ -247,6 +247,52 @@ async function ensureStorageForAction(){
  return true;
 }
 async function persistRequest(){try{if(navigator.storage?.persist)await navigator.storage.persist()}catch{}}
+async function loadExternalStorageHandle(){
+ try{
+  externalDir=await idbGet("meta","externalAudioDirectory");
+  if(externalDir&&typeof externalDir.queryPermission==="function"){
+   const p=await externalDir.queryPermission({mode:"readwrite"}).catch(()=> "prompt");
+   if(p!=="granted")externalDir=null;
+  }
+ }catch{externalDir=null}
+}
+async function chooseExternalStorageDirectory(){
+ if(typeof window.showDirectoryPicker!=="function")throw new Error("This browser does not support choosing a device folder for Localify audio.");
+ const handle=await window.showDirectoryPicker({id:"localify-mobile-audio",mode:"readwrite",startIn:"music"});
+ if(typeof handle.requestPermission==="function"){
+  const p=await handle.requestPermission({mode:"readwrite"});
+  if(p!=="granted")throw new Error("Localify needs permission to save audio in that folder.");
+ }
+ externalDir=handle;externalStorageMode=true;
+ await idbPut("meta","externalAudioDirectory",handle);
+ return true;
+}
+async function externalAudioFile(id){
+ if(!externalDir)return null;
+ const fh=await externalDir.getFileHandle("track-"+id+".audio",{create:false});
+ return await fh.getFile();
+}
+async function removeExternalAudio(id){
+ if(!externalDir)return;
+ try{const fh=await externalDir.getFileHandle("track-"+id+".audio",{create:false});await fh.remove()}catch{}
+}
+async function writeZipEntryToExternal(id,file,e){
+ if(!externalDir)throw new Error("No device audio folder is selected.");
+ const fh=await externalDir.getFileHandle("track-"+id+".audio",{create:true}),w=await fh.createWritable();
+ try{
+  const head=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());
+  if(head.getUint32(0,true)!==0x04034b50)throw new Error("A preset audio entry is damaged.");
+  const nl=head.getUint16(26,true),el=head.getUint16(28,true),start=e.offset+30+nl+el,raw=file.slice(start,start+e.compSize);
+  let stream=raw.stream();
+  if(e.method===8){
+   if(typeof DecompressionStream==="undefined")throw new Error("This browser cannot stream ZIP-compressed audio.");
+   stream=stream.pipeThrough(new DecompressionStream("deflate-raw"));
+  }else if(e.method!==0)throw new Error("This preset uses an unsupported ZIP compression method.");
+  const reader=stream.getReader();
+  while(true){busyCheck();const part=await reader.read();if(part.done)break;await w.write(part.value)}
+  await w.close();return true;
+ }catch(err){try{await w.abort()}catch{};throw err}
+}
 async function initOPFS(){try{if(navigator.storage?.getDirectory)rootDir=await navigator.storage.getDirectory();}catch{rootDir=null}}
 async function opfsFile(id,writeBlob){
  if(!rootDir)return null;
@@ -363,6 +409,9 @@ async function saveAudio(t,blob){
  }
 }
 async function saveZipAudio(t,file,e){
+ if(externalStorageMode&&externalDir){
+  await writeZipEntryToExternal(t.id,file,e);t.storage="external";t._blob=null;return;
+ }
  if(rootDir){
   try{await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}catch(err){
    console.warn("OPFS ZIP write failed",err);
@@ -382,6 +431,9 @@ async function saveZipAudio(t,file,e){
 }
 async function loadAudio(t){
  if(t._blob&&t._blob.size)return t._blob;
+ if(t.storage==="external"&&externalDir){
+  try{const f=await externalAudioFile(t.id);if(f?.size){t._blob=f;return f}}catch(e){console.warn("External audio read failed",e)}
+ }
  if(t.storage==="opfs"){
   try{
    if(!rootDir)await initOPFS();
@@ -406,6 +458,7 @@ async function loadAudio(t){
 }
 async function removeAudio(t){
  t._blob=null;
+ await removeExternalAudio(t.id);
  if(rootDir){try{const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});await dir.removeEntry(t.id)}catch{}}
  try{await idbDel("files",t.id)}catch{}
  try{await idbDeleteAudioChunks(t.id)}catch{}
@@ -1195,10 +1248,27 @@ async function importPreset(file){
   },0);
   const estimate=navigator.storage?.estimate?await navigator.storage.estimate():null;
   const quota=Number(estimate?.quota)||0,used=Number(estimate?.usage)||0,free=Math.max(0,quota-used);
+  externalStorageMode=false;
   if(quota&&audioBytes>free){
-   throw new Error("Not enough browser storage for this preset. The audio inside it needs about "+formatBytes(audioBytes)+", but Localify Mobile currently has about "+formatBytes(free)+" free. Clear space or use a device/browser with more site storage.");
+   if(externalDir){
+    externalStorageMode=true;
+    toast("Using your selected device folder for this large preset.");
+   }else if(typeof window.showDirectoryPicker==="function"){
+    busyHide();await new Promise(resolve=>setTimeout(resolve,120));
+    const useDevice=await new Promise(resolve=>{
+     openModal('<div class="modalHead"><h2>Large preset</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="notice">This preset needs about '+formatBytes(audioBytes)+' of audio, but browser storage only has about '+formatBytes(free)+' free. Choose a folder on your device so the audio does not use the browser storage quota.</div><div class="modalFoot"><button class="btn" id="largeCancel">Cancel</button><button class="btn primary" id="largeChoose">'+icon("folder")+'Choose device folder</button></div>');
+     $("#largeCancel").onclick=()=>{closeModal();resolve(false)};
+     $("#largeChoose").onclick=async()=>{try{await chooseExternalStorageDirectory();closeModal();resolve(true)}catch(err){toast(err?.message||"Could not access that folder.");}};
+    });
+    if(!useDevice){toast("Preset import cancelled.");return}
+    externalStorageMode=true;
+    busyShow("Importing preset","Starting…");
+    busyUpdate("Importing preset","Preparing "+manifest.tracks.length+" songs…",2);
+   }else{
+    throw new Error("This browser only has about "+formatBytes(free)+" free site storage, but the preset needs about "+formatBytes(audioBytes)+" of audio. Open Localify in a browser that supports device-folder storage or free more site storage.");
+   }
   }
-
+ 
   if((manifest.presetKind||"full")==="full"){
    busyHide();await new Promise(resolve=>setTimeout(resolve,140));
    importMode=await choosePresetImportMode();
@@ -1507,6 +1577,7 @@ async function boot(){
    try{
     await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))]);
     await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
+    await loadExternalStorageHandle();
     await persistRequest();
 
   busyUpdate("Loading save","Restoring your library…",55);const had=await restore();

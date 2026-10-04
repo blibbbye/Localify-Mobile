@@ -552,18 +552,24 @@ function playlistCard(p){
  const ts=tracksForPlaylist(p);
  return '<div class="card" data-action="openPlaylist" data-id="'+esc(p.id)+'"><div class="art">'+(p.cover?'<img src="'+esc(p.cover)+'" alt="">':icon("playlists"))+'</div><div class="title">'+esc(p.name)+'</div><div class="sub">'+ts.length+" songs • "+totalLabel(ts)+'</div></div>';
 }
+function homeSectionHead(title,count,view,createAction,showCreate){
+ const action=createAction?'<button class="btn primary small icon" data-action="'+createAction+'" aria-label="Create '+esc(title.slice(0,-1))+'">'+icon("plus")+'</button>':"";
+ const more=view?'<button class="homeMore" data-view="'+view+'">More</button>':"";
+ return '<div class="sectionHead"><strong>'+title+'</strong><div class="homeSectionActions">'+action+more+'</div></div>';
+}
 function renderHome(){
- const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,8);
- const albums=state.albums.slice(0,8),artists=state.artists.slice(0,8),playlists=state.playlists.slice(0,8),folders=state.folders.slice(0,6);
+ const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,4);
+ const albums=state.albums.slice(0,4),artists=state.artists.slice(0,4),playlists=state.playlists.slice(0,4),folders=state.folders.slice(0,4);
  $("#main").innerHTML=
  '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists and folders.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
- '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Folders</strong><button class="btn primary small icon" data-action="homeCreateMenu" aria-label="Create">'+icon("plus")+'</button></div>'+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use Add folder to create one.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Your artists</strong><span>'+state.artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Create an artist or import music.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Your playlists</strong><span>'+state.playlists.length+'</span></div>'+(playlists.length?'<div class="grid">'+playlists.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Create a playlist to see it here.</div>')+'</div>';
+ '<div class="section">'+homeSectionHead("Recently played",recent.length,"library",null,false)+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
+ '<div class="section">'+homeSectionHead("Folders",state.folders.length,"folders","createFolder",true)+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use + to create one.</div>')+'</div>'+
+ '<div class="section">'+homeSectionHead("Albums",state.albums.length,"albums","createAlbum",true)+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Tap + to create one.</div>')+'</div>'+
+ '<div class="section">'+homeSectionHead("Artists",state.artists.length,"artists","createArtist",true)+(artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Tap + to create one.</div>')+'</div>'+
+ '<div class="section">'+homeSectionHead("Playlists",state.playlists.length,"playlists","createPlaylist",true)+(playlists.length?'<div class="grid">'+playlists.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Tap + to create one.</div>')+'</div>';
  bindCovers();
 }
+
 function homeCreateMenu(){
  openSheet('<h2>Create</h2><div class="sheetGrid">'+
   '<button class="sheetItem" data-action="createFolder">'+icon("folder")+'<span>Folder</span></button>'+

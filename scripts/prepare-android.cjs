@@ -51,6 +51,7 @@ public final class LocalifyPlaybackService extends Service {
     private String title = "Localify Mobile";
     private String artist = "Localify playback";
     private boolean playing = false;
+    private android.os.PowerManager.WakeLock wakeLock;
 
     public static LocalifyPlaybackService instance;
 
@@ -58,6 +59,11 @@ public final class LocalifyPlaybackService extends Service {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        android.os.PowerManager pm = (android.os.PowerManager)getSystemService(POWER_SERVICE);
+        if(pm != null) {
+            wakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "LocalifyMobile:Playback");
+            try { wakeLock.acquire(); } catch(Exception ignored) {}
+        }
         createChannel();
 
         mediaSession = new MediaSession(this, "LocalifyMobile");
@@ -210,6 +216,10 @@ public final class LocalifyPlaybackService extends Service {
             mediaSession = null;
         }
         instance = null;
+        if(wakeLock != null) {
+            try { if(wakeLock.isHeld()) wakeLock.release(); } catch(Exception ignored) {}
+            wakeLock = null;
+        }
         super.onDestroy();
     }
 
@@ -223,6 +233,7 @@ fs.writeFileSync(servicePath,service,"utf8");
 
 // Add the Android 8+ foreground-service permissions.
 const manifestPermissions=[
+  "    <uses-permission android:name=\"android.permission.WAKE_LOCK\" />",
   "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\" />",
   "    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK\" />",
   "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />"
@@ -346,7 +357,6 @@ if(!source.includes('"LocalifyNative"')){
         getBridge().getWebView().addJavascriptInterface(new Object() {
             @JavascriptInterface
             public void startPlaybackService() {
-                requestLocalifyAudioFocus();
                 Intent i = new Intent(MainActivity.this, LocalifyPlaybackService.class);
                 if(Build.VERSION.SDK_INT >= 26) startForegroundService(i);
                 else startService(i);

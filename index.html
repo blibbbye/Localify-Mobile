@@ -8,13 +8,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icon.svg">
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/blibbbye/Localify/main/favicon.png">
 <title>Localify Mobile</title>
 <style>
 :root{--bg:#090b0e;--panel:#11161c;--panel2:#171d24;--line:#27303a;--text:#eef3f7;--muted:#8995a3;--accent:#7dd3fc;--danger:#ff7184;--nav:72px;--player:82px;--safe:env(safe-area-inset-bottom)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{overflow-x:hidden}
+body{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;overscroll-behavior-y:auto;-webkit-overflow-scrolling:touch}
 button,input,textarea,select{font:inherit}
 button{color:inherit}
 .i{width:19px;height:19px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -54,7 +54,7 @@ button{border:0}
 .profileSettings{display:grid;gap:8px}.profileSetting{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #242e37;border-radius:11px;background:#11171c}.profileSetting>span{font-size:11px;font-weight:800}.profileSetting input{width:130px}.profileSetting select{width:110px}
 .profileFoot{display:flex;gap:7px}.profileFoot .btn{flex:1}.loginBox{display:grid;gap:11px}.loginHint{color:#7f8a96;font-size:10px;line-height:1.45}
 @media(max-width:430px){.profileBtn{width:38px;height:38px;padding:0;border-radius:11px}.profileBtnText{display:none}.profileStats{grid-template-columns:1fr}.topRight{gap:5px}.brandText strong{font-size:11px}}
-main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;margin:auto}
+main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;margin:auto}
 .head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.headText{min-width:0}.head h1{margin:0;font-size:26px;letter-spacing:-.8px}.head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
 .btn{min-height:42px;padding:9px 12px;border:1px solid #303a45;border-radius:12px;background:#151b21;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:850}
 .btn.primary{background:var(--accent);color:#061017;border-color:transparent}.btn.danger{background:rgba(255,113,132,.08);border-color:rgba(255,113,132,.25);color:#ffb8c1}
@@ -103,7 +103,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 <div class="app">
 <header class="top">
   <div class="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="search" type="search" placeholder="Search your music"></div>
-  <div class="topRight"><button class="profileBtn" id="profileBtn" type="button" aria-label="Localify profile"><span class="profileIcon">'+icon("user")+'</span><span class="profileBtnText" id="profileBtnText">Log in</span></button><div class="brand"><div class="brandText"><strong>LOCALIFY</strong></div><div class="brandLogo" aria-hidden="true"><span>L</span></div></div></div>
+  <div class="topRight"><button class="profileBtn" id="profileBtn" type="button" aria-label="Localify profile"><span class="profileIcon">'+icon("user")+'</span><span class="profileBtnText" id="profileBtnText">Log in</span></button><div class="brand"><div class="brandText"><strong>LOCALIFY</strong></div><img class="brandLogo" src="https://raw.githubusercontent.com/blibbbye/Localify/main/favicon.png" alt="Localify"></div></div>
 </header>
 <main id="main"></main>
 <nav class="nav" id="nav"></nav>

@@ -1,6 +1,6 @@
 {
-  "appId":"com.blibbby.localify",
-  "appName":"Localify Mobile",
+  "appId":"com.blibbby.localio.mobile",
+  "appName":"Localio Mobile",
   "webDir":"www",
   "bundledWebRuntime":false
 }

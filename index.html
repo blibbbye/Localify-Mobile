@@ -666,36 +666,59 @@ function openSongMenu(id){
 }
 function openModal(html){$("#modal").innerHTML=html;$("#modalShade").classList.add("open")}
 function closeModal(){if(!$("#modalShade").classList.contains("open"))return;$("#modalShade").classList.remove("open");}
+function editorArtistPicker(obj){
+ const selected=new Set(Array.isArray(obj?.artistIds)?obj.artistIds:[]);
+ if(!selected.size){
+  const names=String(obj?.artistNames||obj?.artist||"").split(/[,;]\s*/).map(x=>x.trim().toLowerCase()).filter(Boolean);
+  state.artists.forEach(a=>{if(names.includes(String(a.name||"").trim().toLowerCase()))selected.add(a.id)});
+ }
+ const rows=state.artists.map(a=>'<label class="artistChoice"><input type="checkbox" data-editor-artist value="'+esc(a.id)+'" '+(selected.has(a.id)?"checked":"")+'><span class="artistChoiceName">'+esc(a.name)+'</span></label>').join("");
+ return '<div class="field"><label>Select artists</label><div class="artistPickerMenu" style="display:grid;position:static;max-height:190px;overflow:auto">'+(rows||'<div class="empty">Create an artist first, then select them here.</div>')+'</div></div>';
+}
 function createEditor(kind,obj){
- const isSong=kind==="song", isAlbum=kind==="album", isArtist=kind==="artist", isPlaylist=kind==="playlist";
+ const isSong=kind==="song",isAlbum=kind==="album",isArtist=kind==="artist",isPlaylist=kind==="playlist";
  const x=obj||{};
+ window.__editorReturnDetail=state.detail?{type:state.detail.type,id:state.detail.id}:null;
  let extra="";
- if(isSong)extra='<div class="field"><label>Album</label><select id="fAlbum"><option value="">None</option>'+state.albums.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===x.albumId?"selected":"")+'>'+esc(a.title)+'</option>').join("")+'</select></div><div class="field"><label>Artist names</label><input id="fArtists" value="'+esc(artistText(x)===NONE?"":artistText(x))+'" placeholder="Artist, Artist"></div><div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div><div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Lyrics</label><textarea id="fLyrics">'+esc(x.lyrics||"")+'</textarea></div>';
- else if(isAlbum)extra='<div class="field"><label>Artist names</label><input id="fArtists" value="'+esc(x.artistNames||"")+'" placeholder="Artist, Artist"></div><div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div>';
+ if(isSong)extra='<div class="field"><label>Album</label><select id="fAlbum"><option value="">None</option>'+state.albums.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===x.albumId?"selected":"")+'>'+esc(a.title)+'</option>').join("")+'</select></div>'+editorArtistPicker(x)+'<div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div><div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Lyrics</label><textarea id="fLyrics">'+esc(x.lyrics||"")+'</textarea></div>';
+ else if(isAlbum)extra=editorArtistPicker(x)+'<div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div>';
  else if(isArtist)extra='<div class="field"><label>Genres</label><input id="fGenres" value="'+esc((x.genres||[]).join(", "))+'" placeholder="Hip-Hop, R&B"></div><div class="field"><label>Bio</label><textarea id="fBio">'+esc(x.bio||"")+'</textarea></div>';
  else extra='<div class="field"><label>Description</label><textarea id="fDescription">'+esc(x.description||"")+'</textarea></div>';
- const title=isSong?(x?"Edit song":"New song"):isAlbum?(x?"Edit album":"Create album"):isArtist?(x?"Edit artist":"Create artist"):(x?"Edit playlist":"Create playlist");
- openModal('<div class="modalHead"><h2>'+title+'</h2><button class="circle" data-action="closeModal" aria-label="Close">'+icon("close")+'</button></div><div class="form">'+
- '<div class="field"><label>'+((isSong||isAlbum)?"Title":"Name")+'</label><input id="fTitle" value="'+esc(x.title||x.name||"")+'"></div>'+
- extra+
- '</div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveEditor" data-kind="'+kind+'" data-id="'+esc(x.id||"")+'">Save</button></div>');
+ const title=isSong?(x.id?"Edit song":"New song"):isAlbum?(x.id?"Edit album":"Create album"):isArtist?(x.id?"Edit artist":"Create artist"):(x.id?"Edit playlist":"Create playlist");
+ openModal('<div class="modalHead"><h2>'+title+'</h2><button class="circle" data-action="closeModal" aria-label="Close">'+icon("close")+'</button></div><div class="form"><div class="field"><label>'+((isSong||isAlbum)?"Title":"Name")+'</label><input id="fTitle" value="'+esc(x.title||x.name||"")+'"></div>'+extra+'</div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveEditor" data-kind="'+kind+'" data-id="'+esc(x.id||"")+'">Save</button></div>');
 }
 async function saveEditor(kind,id){
  const existing=state.tracks.find(x=>x.id===id)||state.albums.find(x=>x.id===id)||state.artists.find(x=>x.id===id)||state.playlists.find(x=>x.id===id)||null;
  const title=$("#fTitle")?.value.trim();if(!title){toast("Add a name first.");return}
  if(kind==="song"){
-  const t=existing||{id:uid(),title:"",artistIds:[],albumId:null,duration:0,fileName:"",cover:null,lyrics:""};t.title=title;
-  const names=($("#fArtists")?.value||"").split(",").map(x=>x.trim()).filter(Boolean);t.artistIds=[];
-  names.forEach(n=>{let a=findArtist(n);if(!a){a={id:uid(),name:n,image:null,genres:[],bio:""};state.artists.push(a)}t.artistIds.push(a.id)});
-  const aid=$("#fAlbum")?.value||"";t.albumId=aid||null;t.album=aid?(state.albums.find(a=>a.id===aid)?.title||NONE):NONE;t.artist=names.join(", ")||NONE;t.genre=$("#fGenre")?.value||"";t.year=$("#fYear")?.value||"";t.lyrics=$("#fLyrics")?.value||"";if(!existing)state.tracks.push(t);
+  const t=existing||{id:uid(),title:"",artistIds:[],albumId:null,duration:0,fileName:"",cover:null,lyrics:""};
+  t.title=title;
+  const artistIds=$$("[data-editor-artist]:checked").map(x=>x.value);
+  t.artistIds=[...new Set(artistIds)];
+  t.artist=t.artistIds.map(id=>state.artists.find(a=>a.id===id)?.name).filter(Boolean).join(", ")||NONE;
+  const aid=$("#fAlbum")?.value||"";t.albumId=aid||null;t.album=aid?(state.albums.find(a=>a.id===aid)?.title||NONE):NONE;
+  t.genre=$("#fGenre")?.value||"";t.year=$("#fYear")?.value||"";t.lyrics=$("#fLyrics")?.value||"";
+  if(!existing)state.tracks.push(t);
  }else if(kind==="album"){
-  const a=existing||{id:uid(),title:"",artistIds:[],cover:null,year:"",genre:""};a.title=title;a.artistNames=$("#fArtists")?.value||"";a.artist= a.artistNames;a.year=$("#fYear")?.value||"";a.genre=$("#fGenre")?.value||"";if(!existing)state.albums.push(a);
+  const a=existing||{id:uid(),title:"",artistIds:[],cover:null,year:"",genre:""};
+  a.title=title;
+  a.artistIds=[...new Set($$("[data-editor-artist]:checked").map(x=>x.value))];
+  a.artistNames=a.artistIds.map(id=>state.artists.find(v=>v.id===id)?.name).filter(Boolean).join(", ");
+  a.artist=a.artistNames||NONE;
+  a.year=$("#fYear")?.value||"";a.genre=$("#fGenre")?.value||"";
+  if(!existing)state.albums.push(a);
  }else if(kind==="artist"){
   const a=existing||{id:uid(),name:"",image:null,genres:[],bio:""};a.name=title;a.genres=($("#fGenres")?.value||"").split(",").map(x=>x.trim()).filter(Boolean);a.bio=$("#fBio")?.value||"";if(!existing)state.artists.push(a);
  }else{
   const p=existing||{id:uid(),name:"",description:"",trackIds:[]};p.name=title;p.description=$("#fDescription")?.value||"";if(!existing)state.playlists.push(p);
  }
- closeModal();closeSheet();try{await ensureStorageForAction();await saveMeta(true)}catch(e){console.warn(e)}render();toast("Saved.");
+ const returnDetail=window.__editorReturnDetail||null;delete window.__editorReturnDetail;
+ closeModal();closeSheet();
+ try{await ensureStorageForAction();await saveMeta(true)}catch(e){console.warn(e)}
+ if(returnDetail?.type==="folder")showFolder(returnDetail.id);
+ else if(returnDetail?.type)showDetail(returnDetail.type,returnDetail.id);
+ else render();
+ toast("Saved.");
 }
 function u32be(bytes,o){return (((bytes[o]||0)<<24)|((bytes[o+1]||0)<<16)|((bytes[o+2]||0)<<8)|(bytes[o+3]||0))>>>0}
 function syncsafe(bytes,o){return (((bytes[o]||0)&127)<<21)|(((bytes[o+1]||0)&127)<<14)|(((bytes[o+2]||0)&127)<<7)|((bytes[o+3]||0)&127)}

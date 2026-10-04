@@ -287,7 +287,7 @@ if(!source.includes('"LocalifyNative"')){
         try {
             WebView w = a.getBridge() == null ? null : a.getBridge().getWebView();
             if (w == null) return;
-            String safe = action == null ? "" : action.replace("\\", "\\\\").replace("'", "\\'");
+            String safe = action == null ? "" : action;
             String js = "window.__localifyNativeMediaAction&&window.__localifyNativeMediaAction('" + safe + "')";
             w.post(() -> w.evaluateJavascript(js, null));
         } catch(Exception ignored) {}

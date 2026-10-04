@@ -17,9 +17,9 @@ button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:22px 16px 5
 .hero{margin-top:18px;padding:22px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(145deg,#12181e,#0b1015);box-shadow:0 24px 80px rgba(0,0,0,.35)}.heroGrid{display:grid;grid-template-columns:160px minmax(0,1fr);gap:20px;align-items:center}.coverWall{width:160px;height:160px;border-radius:20px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;background:#151b21;box-shadow:0 18px 45px rgba(0,0,0,.35)}.coverWall img,.miniArt img{width:100%;height:100%;object-fit:cover}.coverCell{min-width:0;min-height:0;background:linear-gradient(145deg,#1a222b,#0d1217);display:grid;place-items:center;color:#607080;font-size:32px}.heroTitle{font-size:clamp(30px,5vw,52px);line-height:.98;letter-spacing:-2px;margin:0}.heroSub{color:var(--muted);margin-top:8px;line-height:1.5}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:16px}.stat{min-width:0}.stat{padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:rgba(17,23,29,.92)}.stat b{display:block;font-size:23px}.stat span{color:#7f8a96;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:850}
 .tabs{display:flex;gap:7px;overflow:auto;padding:12px 0 3px;position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#07090c 70%,transparent)}.tab{white-space:nowrap;padding:9px 13px;border:1px solid var(--line);border-radius:999px;background:#0e1318;color:#9ca7b2;font-weight:850;font-size:11px}.tab.active{background:var(--accent);border-color:var(--accent);color:#081017}
 .toolbar{display:flex;gap:8px;align-items:center;margin:10px 0}.search{flex:1;min-width:0;background:#0f1419;border:1px solid var(--line);border-radius:12px;color:#fff;padding:10px 12px;outline:none}.search:focus{border-color:#46515e}.count{color:#76818c;font-size:11px}
-.panel{border:1px solid var(--line);border-radius:17px;background:rgba(13,18,23,.94);overflow:hidden}.list{max-height:520px;overflow:auto}.row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:center;padding:9px 11px;border-top:1px solid rgba(255,255,255,.035)}.row:first-child{border-top:0}.row:hover{background:#141a20}.miniArt{width:42px;height:42px;border-radius:9px;overflow:hidden;background:#171d24;display:grid;place-items:center;color:#6a7785}.name{font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub{margin-top:3px;color:#798591;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.badge{font-size:10px;color:#aeb7c0}.empty{padding:22px;color:#7f8a96;text-align:center}.footer{margin-top:16px;color:#687480;font-size:10px;line-height:1.5}
-@media(max-width:650px){.heroGrid{grid-template-columns:1fr}.coverWall{width:112px;height:112px}.stats{grid-template-columns:repeat(5,minmax(118px,1fr));overflow-x:auto;padding-bottom:2px}.wrap{padding-left:11px;padding-right:11px}.row{grid-template-columns:38px minmax(0,1fr) auto}.miniArt{width:38px;height:38px}}
-</style>
+ .panel{border:1px solid var(--line);border-radius:17px;background:rgba(13,18,23,.94);overflow:hidden}.list{max-height:620px;overflow:auto}.shareGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px}.shareCard{min-width:0;border:1px solid #202830;background:#11161b;border-radius:15px;padding:9px;overflow:hidden}.shareCardTitle{font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}.shareArt{aspect-ratio:1;border-radius:11px;overflow:hidden;background:#202832;display:grid;place-items:center;color:#64717f}.shareArt img{width:100%;height:100%;object-fit:cover;display:block}.shareCard.artist .shareArt{border-radius:50%}.shareFolderArt{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;aspect-ratio:1;border-radius:11px;overflow:hidden;background:#1a222a;gap:2px}.shareFolderArt>div{min-width:0;min-height:0;background:#202a33;display:grid;place-items:center;color:#64717f;overflow:hidden}.shareFolderArt img{width:100%;height:100%;object-fit:cover;display:block}.sharePlaceholder{font-size:28px}.empty{padding:22px;color:#7f8a96;text-align:center;grid-column:1/-1}.footer{margin-top:16px;color:#687480;font-size:10px;line-height:1.5}
+@media(max-width:900px){.shareGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.heroGrid{grid-template-columns:1fr}.coverWall{width:112px;height:112px}.stats{grid-template-columns:repeat(5,minmax(118px,1fr));overflow-x:auto;padding-bottom:2px}.wrap{padding-left:11px;padding-right:11px}.shareGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px}.shareCard{padding:8px}.shareCardTitle{font-size:11px;margin-bottom:7px}}</style>
 </head>
 <body>
 <div class="wrap">
@@ -49,40 +49,47 @@ button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:22px 16px 5
  }
  const d=await decode();
  if(!d){$("#subtitle").textContent="This share link is missing or invalid.";$("#list").innerHTML='<div class="empty">Create a new share preview from Localify.</div>';return}
+ const alpha=(arr,getter)=>arr.slice().sort((a,b)=>String(getter(a)||"").localeCompare(String(getter(b)||""),undefined,{numeric:true,sensitivity:"base"}));
  const cats={
   overview:{label:"Overview",items:[]},
-  albums:{label:"Albums",items:d.a||d.albums||[]},
-  artists:{label:"Artists",items:d.r||d.artists||[]},
-  songs:{label:"Songs",items:d.s||d.songs||[]},
-  folders:{label:"Folders",items:d.f||d.folders||[]},
-  playlists:{label:"Playlists",items:d.p||d.playlists||[]}
+  albums:{label:"Albums",items:alpha(d.a||d.albums||[],x=>x.t??x.title)},
+  artists:{label:"Artists",items:alpha(d.r||d.artists||[],x=>x.n??x.name)},
+  songs:{label:"Songs",items:alpha(d.s||d.songs||[],x=>x.t??x.title)},
+  folders:{label:"Folders",items:alpha(d.f||d.folders||[],x=>x.n??x.name)},
+  playlists:{label:"Playlists",items:alpha(d.p||d.playlists||[],x=>x.n??x.name)}
  };
  const counts=d.c||d.counts||{};
  $("#title").textContent=d.n||d.name||"Localify Library";
  $("#subtitle").textContent=(d.x||d.exportedAt||d.createdAt?"Shared Localify library":"Localify library preview")+" • "+Number(counts.songs??d.totalTracks??0).toLocaleString()+" songs";
- const stats=[["Albums",counts.albums],["Artists",counts.artists],["Folders",counts.folders],["Playlists",counts.playlists],["Extra data",counts.songs??d.totalTracks]];
+ const stats=[["Albums",counts.albums],["Artists",counts.artists],["Folders",counts.folders],["Playlists",counts.playlists],["Songs",counts.songs??d.totalTracks]];
  $("#stats").innerHTML=stats.map(x=>'<div class="stat"><b>'+Number(x[1]||0).toLocaleString()+'</b><span>'+x[0]+'</span></div>').join("");
- const allCovers=[];
- for(const x of (cats.albums.items||[]))if(x.k||x.cover)allCovers.push(x.k||x.cover);
- $("#coverWall").innerHTML=allCovers.slice(0,4).map(u=>'<div class="coverCell"><img src="'+esc(u)+'" alt=""></div>').join("");
+ const albumCovers=cats.albums.items.map(x=>x.k||x.cover||"").filter(Boolean);
+ $("#coverWall").innerHTML=albumCovers.slice(0,4).map(u=>'<div class="coverCell"><img src="'+esc(u)+'" alt=""></div>').join("");
  while($("#coverWall").children.length<4)$("#coverWall").insertAdjacentHTML("beforeend",'<div class="coverCell">♫</div>');
  let current="overview",query="";
  function renderTabs(){$("#tabs").innerHTML=Object.entries(cats).map(([id,x])=>'<button class="tab '+(id===current?"active":"")+'" data-tab="'+id+'">'+x.label+'</button>').join("");document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{current=b.dataset.tab;query="";$("#search").value="";render()})}
- function dataFor(id){
-   if(id==="overview")return [
-     ...cats.albums.items.slice(0,8).map(x=>({type:"Album",name:x.t??x.title||"Untitled album",sub:x.a??x.artist||"Unknown Artist",cover:x.k??x.cover||""})),
-     ...cats.artists.items.slice(0,8).map(x=>({type:"Artist",name:x.n??x.name||"Unknown Artist",sub:"Artist"})),
-     ...cats.songs.items.slice(0,8).map(x=>({type:"Song",name:x.t??x.title||"Untitled song",sub:x.a??x.artist||"Unknown Artist",cover:x.k??x.cover||""})),
-     ...cats.folders.items.slice(0,8).map(x=>({type:"Folder",name:x.n??x.name||"Untitled folder",sub:(x.i??x.extra??"0 items")+" items"})),
-     ...cats.playlists.items.slice(0,8).map(x=>({type:"Playlist",name:x.n??x.name||"Untitled playlist",sub:(x.i??x.extra??"0 songs")+" songs"}))
-   ];
-   if(id==="albums")return cats.albums.items.map(x=>({type:"Album",name:x.t??x.title||"Untitled album",sub:x.a??x.artist||"Unknown Artist",cover:x.k??x.cover||"",badge:x.y||x.year||""}));
-   if(id==="artists")return cats.artists.items.map(x=>({type:"Artist",name:x.n??x.name||"Unknown Artist",sub:x.g||x.extra||"Artist",cover:x.k??x.cover||""}));
-   if(id==="songs")return cats.songs.items.map(x=>({type:"Song",name:x.t??x.title||"Untitled song",sub:x.a??x.artist||"Unknown Artist",cover:x.k??x.cover||"",badge:x.n||x.trackNumber||""}));
-   if(id==="folders")return cats.folders.items.map(x=>({type:"Folder",name:x.n??x.name||"Untitled folder",sub:(x.i??x.extra??"0 items")+" items"}));
-   return cats.playlists.items.map(x=>({type:"Playlist",name:x.n??x.name||"Untitled playlist",sub:(x.i??x.extra??"0 songs")+" songs"}));
+ function folderHtml(x){
+   const covers=Array.isArray(x.k)?x.k.slice(0,4):[];
+   return '<div class="shareFolderArt">'+[0,1,2,3].map(i=>covers[i]?'<div><img src="'+esc(covers[i])+'" alt=""></div>':'<div><span class="sharePlaceholder">▣</span></div>').join("")+'</div>';
  }
- function render(){renderTabs();const q=query.trim().toLocaleLowerCase();const items=dataFor(current).filter(x=>!q||(x.name+" "+x.sub).toLocaleLowerCase().includes(q));$("#count").textContent=items.length.toLocaleString()+" shown";$("#list").innerHTML=items.length?items.map(x=>'<div class="row"><div class="miniArt">'+(x.cover?'<img src="'+esc(x.cover)+'" alt="">':(x.type==="Folder"?"▣":x.type==="Artist"?"♟":x.type==="Playlist"?"☷":"♫"))+'</div><div><div class="name">'+esc(x.name)+'</div><div class="sub">'+esc(x.sub)+'</div></div><div class="badge">'+esc(x.badge||"")+'</div></div>').join(""):'<div class="empty">Nothing in this category matches your search.</div>'}
+ function cardHtml(type,x){
+   const title=type==="albums"?x.t??x.title||"Untitled album":type==="artists"?x.n??x.name||"Unknown Artist":type==="songs"?x.t??x.title||"Untitled song":type==="folders"?x.n??x.name||"Untitled folder":x.n??x.name||"Untitled playlist";
+   const cover=type==="artists"?x.k||x.cover||x.image||"":x.k||x.cover||"";
+   const artHtml=type==="folders"?folderHtml(x):'<div class="shareArt">'+(cover?'<img src="'+esc(cover)+'" alt="">':'<span class="sharePlaceholder">'+(type==="artists"?"♟":type==="playlists"?"☷":type==="songs"?"♫":"▣")+'</span>')+'</div>';
+   return '<div class="shareCard '+(type==="artists"?"artist":"")+'"><div class="shareCardTitle">'+esc(title)+'</div>'+artHtml+'</div>';
+ }
+ function dataFor(id){return id==="overview"?[]:cats[id].items}
+ function render(){
+   renderTabs();
+   const q=query.trim().toLocaleLowerCase();
+   const filtered=dataFor(current).filter(x=>{if(!q)return true;const title=String(x.t??x.n??x.title??x.name??"");return title.toLocaleLowerCase().includes(q)});
+   $("#count").textContent=filtered.length.toLocaleString()+" shown";
+   if(current==="overview"){
+     $("#list").innerHTML='<div class="shareGrid"><div class="shareCard"><div class="shareCardTitle">Albums</div><div class="shareArt">'+(cats.albums.items[0]?.k?'<img src="'+esc(cats.albums.items[0].k)+'" alt="">':'<span class="sharePlaceholder">▣</span>')+'</div></div><div class="shareCard artist"><div class="shareCardTitle">Artists</div><div class="shareArt">'+(cats.artists.items[0]?.k?'<img src="'+esc(cats.artists.items[0].k)+'" alt="">':'<span class="sharePlaceholder">♟</span>')+'</div></div><div class="shareCard"><div class="shareCardTitle">Songs</div><div class="shareArt">'+(cats.songs.items[0]?.k?'<img src="'+esc(cats.songs.items[0].k)+'" alt="">':'<span class="sharePlaceholder">♫</span>')+'</div></div><div class="shareCard"><div class="shareCardTitle">Folders</div>'+folderHtml(cats.folders.items[0]||{})+'</div><div class="shareCard"><div class="shareCardTitle">Playlists</div><div class="shareArt">'+(cats.playlists.items[0]?.k?'<img src="'+esc(cats.playlists.items[0].k)+'" alt="">':'<span class="sharePlaceholder">☷</span>')+'</div></div></div>';
+   }else{
+     $("#list").innerHTML=filtered.length?'<div class="shareGrid">'+filtered.map(x=>cardHtml(current,x)).join("")+'</div>':'<div class="shareGrid"><div class="empty">Nothing in this category matches your search.</div></div>';
+   }
+ }
  $("#search").oninput=e=>{query=e.target.value;render()};
  render();
  document.title=(d.n||d.name||"Localify Library")+" — Localify";

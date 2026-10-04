@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-1">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -426,7 +426,7 @@ async function nativeWriteBlob(id,blob){
  let first=true;
  for(let off=0;off<blob.size;off+=NATIVE_WRITE_CHUNK){
   const bytes=new Uint8Array(await blob.slice(off,off+NATIVE_WRITE_CHUNK).arrayBuffer());
-  await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),append:!first});
+  if(first)await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),recursive:true});else await fs.appendFile({path,directory:"DATA",data:bytesToBase64(bytes)});
   first=false;
  }
  if(first)await fs.writeFile({path,directory:"DATA",data:"",append:false});
@@ -444,7 +444,7 @@ async function nativeWriteStream(id,stream){
    busyCheck();
    const part=await reader.read();if(part.done)break;
    const bytes=part.value instanceof Uint8Array?part.value:new Uint8Array(part.value);
-   if(bytes.length)await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),append:!first});
+   if(bytes.length){if(first)await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),recursive:true});else await fs.appendFile({path,directory:"DATA",data:bytesToBase64(bytes)});}
    first=false;total+=bytes.length;
   }
   if(first)await fs.writeFile({path,directory:"DATA",data:"",append:false});

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-mobile-storage-hotfix-4">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -341,7 +341,7 @@ async function writeZipEntryToOPFS(id,file,e){
   return true;
  }catch(e2){try{await w.abort()}catch{};throw e2}
 }
-const AUDIO_CHUNK_SIZE=4*1024*1024;
+const AUDIO_CHUNK_SIZE=1024*1024;
 async function writeBlobToIDBChunks(id,blob,type="application/octet-stream"){
  await idbDeleteAudioChunks(id);
  let reader=blob.stream().getReader(),parts=0,total=0,buf=new Uint8Array(AUDIO_CHUNK_SIZE),used=0;
@@ -391,7 +391,136 @@ function zipEntryStream(file,e){
   throw new Error("This preset uses a ZIP compression method that Localify Mobile cannot read in this browser.");
  });
 }
+const NATIVE_AUDIO_DIR="LocalifyAudio";
+const NATIVE_WRITE_CHUNK=1024*1024;
+function nativeFilesystem(){
+ try{
+  const C=window.Capacitor;
+  return C?.isNativePlatform?.()&&C?.Plugins?.Filesystem?C.Plugins.Filesystem:null;
+ }catch{return null}
+}
+function nativeIsAvailable(){return !!nativeFilesystem()}
+function bytesToBase64(bytes){
+ let s="";
+ const step=0x8000;
+ for(let i=0;i<bytes.length;i+=step)s+=String.fromCharCode(...bytes.subarray(i,i+step));
+ return btoa(s);
+}
+function base64ToBytes(data){
+ const bin=atob(String(data||"")),out=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+ return out;
+}
+async function nativeEnsureAudioDir(){
+ const fs=nativeFilesystem();if(!fs)return false;
+ try{await fs.mkdir({path:NATIVE_AUDIO_DIR,directory:"DATA",recursive:true})}catch(e){
+  if(!String(e?.message||"").toLowerCase().includes("exist"))throw e;
+ }
+ return true;
+}
+function nativeAudioPath(id){return NATIVE_AUDIO_DIR+"/"+id+".audio"}
+async function nativeWriteBlob(id,blob){
+ const fs=nativeFilesystem();if(!fs)return false;
+ await nativeEnsureAudioDir();
+ const path=nativeAudioPath(id);
+ let first=true;
+ for(let off=0;off<blob.size;off+=NATIVE_WRITE_CHUNK){
+  const bytes=new Uint8Array(await blob.slice(off,off+NATIVE_WRITE_CHUNK).arrayBuffer());
+  await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),append:!first});
+  first=false;
+ }
+ if(first)await fs.writeFile({path,directory:"DATA",data:"",append:false});
+ const st=await fs.stat({path,directory:"DATA"});
+ if(blob.size&&Number(st?.size||0)<blob.size)throw new Error("Native audio file verification failed.");
+ return path;
+}
+async function nativeWriteStream(id,stream){
+ const fs=nativeFilesystem();if(!fs)return false;
+ await nativeEnsureAudioDir();
+ const path=nativeAudioPath(id),reader=stream.getReader();
+ let first=true,total=0;
+ try{
+  while(true){
+   busyCheck();
+   const part=await reader.read();if(part.done)break;
+   const bytes=part.value instanceof Uint8Array?part.value:new Uint8Array(part.value);
+   if(bytes.length)await fs.writeFile({path,directory:"DATA",data:bytesToBase64(bytes),append:!first});
+   first=false;total+=bytes.length;
+  }
+  if(first)await fs.writeFile({path,directory:"DATA",data:"",append:false});
+  const st=await fs.stat({path,directory:"DATA"});
+  if(total&&Number(st?.size||0)<total)throw new Error("Native audio file verification failed.");
+  return path;
+ }catch(e){throw e}
+}
+async function nativeLoadAudio(t){
+ const fs=nativeFilesystem();if(!fs||t.storage!=="native")return null;
+ const path=t.nativePath||nativeAudioPath(t.id);
+ try{
+  const uriResult=await fs.getUri({path,directory:"DATA"});
+  const raw=String(uriResult?.uri||"");
+  const C=window.Capacitor;
+  const url=C?.convertFileSrc?C.convertFileSrc(raw):raw;
+  if(url){
+   try{
+    const res=await fetch(url);
+    if(res.ok)return await res.blob();
+   }catch{}
+  }
+ }catch{}
+ try{
+  const data=await fs.readFile({path,directory:"DATA"});
+  return new Blob([base64ToBytes(data?.data||"")],{type:t.mimeType||"application/octet-stream"});
+ }catch(e){console.warn("Native audio read failed",e);return null}
+}
+async function nativeDeleteAudio(t){
+ const fs=nativeFilesystem();if(!fs)return;
+ try{await fs.deleteFile({path:t.nativePath||nativeAudioPath(t.id),directory:"DATA"})}catch{}
+}
+async function loadAudio(t){
+ if(!t)return null;
+ if(t.blob instanceof Blob)return t.blob;
+ if(t._blob instanceof Blob)return t._blob;
+ if(t.storage==="native"){
+  const b=await nativeLoadAudio(t);if(b)return b;
+ }
+ if(t.storage==="external"&&externalDir){
+  try{return await externalAudioFile(t.id)}catch{}
+ }
+ if(t.storage==="opfs"){
+  try{
+   const b=await opfsFile(t.id,false);
+   if(b?.size)return b;
+  }catch{}
+ }
+ if(t.storage==="idb-chunks"){
+  try{
+   const meta=await idbGet("audioMeta",t.id);
+   if(meta?.chunks){
+    const parts=[];
+    for(let i=0;i<meta.chunks;i++){
+     const part=await idbGet("audioChunks",[t.id,i]);
+     if(!part)throw new Error("Missing saved audio chunk "+i);
+     parts.push(part);
+   }
+   return new Blob(parts,{type:meta.type||t.mimeType||"application/octet-stream"});
+  }catch(e){console.warn("IndexedDB audio read failed",e)}
+ }
+ try{
+  const legacy=await idbGet("files",t.id);
+  if(legacy instanceof Blob)return legacy;
+  if(legacy?.blob instanceof Blob)return legacy.blob;
+ }catch{}
+ return null;
+}
+
 async function saveAudio(t,blob){
+ if(nativeIsAvailable()){
+  try{
+   t.nativePath=await nativeWriteBlob(t.id,blob);
+   t.storage="native";t.mimeType=blob.type||"application/octet-stream";t._blob=null;return;
+  }catch(e){console.warn("Native filesystem save failed; using browser storage fallback",e)}
+ }
  if(rootDir){
   try{await writeBlobToOPFS(t.id,blob);t.storage="opfs";t._blob=null;return}catch(e){
    console.warn("OPFS write failed",e);
@@ -403,12 +532,21 @@ async function saveAudio(t,blob){
  }
  try{
   await writeBlobToIDBChunks(t.id,blob,blob.type||"application/octet-stream");
-  t.storage="idb-chunks";t._blob=null;
+  t.storage="idb-chunks";t.mimeType=blob.type||"application/octet-stream";t._blob=null;
  }catch(e){
-  throw new Error("Localify could not save this audio file ("+formatBytes(blob.size)+"). The browser may be out of site storage or have blocked persistent storage. Your completed songs are kept.");
+  throw new Error("Localify could not save this audio file ("+formatBytes(blob.size)+"). The browser may be out of site storage or have blocked persistent storage.");
  }
 }
+
 async function saveZipAudio(t,file,e){
+ if(nativeIsAvailable()){
+  try{
+   const stream=await zipEntryStream(file,e);
+   t.nativePath=await nativeWriteStream(t.id,stream);
+   t.storage="native";t.mimeType="audio/*";t._blob=null;return;
+  }catch(err){console.warn("Native ZIP audio save failed; using browser storage fallback",err)}
+ }
+
  const expected=Number(e.uncompSize)||0;
  const verifyOPFS=async()=>{
   try{
@@ -450,11 +588,13 @@ async function saveZipAudio(t,file,e){
 }
 async function removeAudio(t){
  t._blob=null;
+ if(t.storage==="native"){await nativeDeleteAudio(t);return}
  await removeExternalAudio(t.id);
  if(rootDir){try{const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});await dir.removeEntry(t.id)}catch{}}
  try{await idbDel("files",t.id)}catch{}
  try{await idbDeleteAudioChunks(t.id)}catch{}
 }
+
 function ensureStateCollections(){
  state.tracks=Array.isArray(state.tracks)?state.tracks:[];
  state.albums=Array.isArray(state.albums)?state.albums:[];

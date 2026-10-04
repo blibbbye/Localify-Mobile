@@ -417,71 +417,96 @@ function zipEntryStream(file,e){
   throw new Error("This preset uses a ZIP compression method that Localify Mobile cannot read in this browser.");
  });
 }
+async function writeBlobToOPFS(id,blob){
+ const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});
+ const fh=await dir.getFileHandle(id,{create:true});
+ const w=await fh.createWritable();
+ try{await blob.stream().pipeTo(w)}catch(e){try{await w.abort()}catch{};throw e}
+}
+async function writeZipEntryToOPFS(id,file,e){
+ const head=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());
+ if(head.getUint32(0,true)!==0x04034b50)throw new Error("A preset audio entry is damaged.");
+ const nl=head.getUint16(26,true),el=head.getUint16(28,true),start=e.offset+30+nl+el,raw=file.slice(start,start+e.compSize);
+ let stream=raw.stream();
+ if(e.method===8){
+  if(typeof DecompressionStream==="undefined")throw new Error("This browser cannot stream ZIP-compressed audio.");
+  stream=stream.pipeThrough(new DecompressionStream("deflate-raw"));
+ }else if(e.method!==0)throw new Error("Unsupported ZIP compression method.");
+ const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});
+ const fh=await dir.getFileHandle(id,{create:true});
+ const w=await fh.createWritable();
+ try{await stream.pipeTo(w)}catch(err){try{await w.abort()}catch{};throw err}
+}
 async function saveAudio(t,blob){
+ if(!blob||typeof blob.stream!=="function")throw new Error("Invalid audio file.");
  if(rootDir){
-  try{await writeBlobToOPFS(t.id,blob);t.storage="opfs";t._blob=null;return}catch(e){
-   console.warn("OPFS write failed",e);
-   try{
-    await initOPFS();
-    if(rootDir){await writeBlobToOPFS(t.id,blob);t.storage="opfs";t._blob=null;return}
-   }catch(retryError){console.warn("OPFS retry failed",retryError)}
-  }
+  try{
+   await withStorageWriteLock(()=>writeBlobToOPFS(t.id,blob));
+   t.storage="opfs-v4";t.size=Number(blob.size)||0;t._blob=null;storageMode="opfs";return;
+  }catch(e){console.warn("OPFS audio write failed; switching to IndexedDB chunks",e)}
  }
  try{
-  await writeBlobToIDBChunks(t.id,blob,blob.type||"application/octet-stream");
-  t.storage="idb-chunks";t._blob=null;
+  const info=await writeBlobToIDBChunksV4(t.id,blob,blob.type||"application/octet-stream");
+  t.storage="idb-v4";t.size=info.size;t._blob=null;storageMode="idb-v4";
  }catch(e){
-  throw new Error("Localify could not save this audio file ("+formatBytes(blob.size)+"). The browser may be out of site storage or have blocked persistent storage. Your completed songs are kept.");
+  throw new Error("Could not save "+formatBytes(blob.size)+" of audio. Browser storage is full or unavailable. Completed songs are kept.");
  }
 }
 async function saveZipAudio(t,file,e){
+ const size=Number(e.uncompSize)||0;
  if(rootDir){
-  try{await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}catch(err){
-   console.warn("OPFS ZIP write failed",err);
-   try{
-    await initOPFS();
-    if(rootDir){await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}
-   }catch(retryError){console.warn("OPFS ZIP retry failed",retryError)}
-  }
+  try{
+   await withStorageWriteLock(()=>writeZipEntryToOPFS(t.id,file,e));
+   t.storage="opfs-v4";t.size=size;t._blob=null;storageMode="opfs";return;
+  }catch(err){console.warn("OPFS preset write failed; switching to IndexedDB chunks",err)}
  }
  try{
-  const stream=await zipEntryStream(file,e);
-  await writeStreamToIDBChunks(t.id,stream,"audio/*");
-  t.storage="idb-chunks";t._blob=null;
+  const stream=zipEntryStream(file,e);
+  const info=await writeStreamToIDBChunksV4(t.id,stream,"audio/*");
+  t.storage="idb-v4";t.size=info.size||size;t._blob=null;storageMode="idb-v4";
  }catch(err){
-  throw new Error("Localify could not save this preset audio file ("+formatBytes(Number(e.uncompSize)||0)+"). The browser may be out of site storage. Completed songs are kept.");
+  throw new Error("Could not save "+formatBytes(size)+" of preset audio. Browser storage is full or unavailable. Completed songs are kept.");
  }
 }
 async function loadAudio(t){
  if(t._blob&&t._blob.size)return t._blob;
- if(t.storage==="opfs"){
+ if(t.storage==="opfs-v4"||t.storage==="opfs"){
   try{
    if(!rootDir)await initOPFS();
-   if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
-  }catch(e){
-   console.warn("OPFS read failed",e);
-   rootDir=null;
-   try{
-    await initOPFS();
-    if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
-   }catch(retryError){console.warn("OPFS retry failed",retryError)}
-  }
+   if(rootDir){
+    const f=await opfsFile(t.id,false);
+    if(f?.size){t._blob=f;t.storage="opfs-v4";t.size=f.size;return f}
+   }
+  }catch(e){console.warn("OPFS read failed",e)}
  }
- if(t.storage==="idb-chunks"){
+ if(t.storage==="idb-v4"){
+  const b=await loadAudioV4(t);if(b)return b;
+ }
+ const legacy=await loadLegacyAudio(t);
+ if(legacy){
   try{
-   const meta=await idbGet("audioMeta",t.id);
-   if(meta?.chunks){const chunks=await idbGetAll("audioChunks",IDBKeyRange.bound([t.id,0],[t.id,meta.chunks-1]));if(chunks.length===meta.chunks){const b=new Blob(chunks,{type:meta.type||"application/octet-stream"});t._blob=b;return b}}
-  }catch(e){console.warn("Chunked audio read failed",e)}
+   if(rootDir){
+    await withStorageWriteLock(()=>writeBlobToOPFS(t.id,legacy));
+    t.storage="opfs-v4";t.size=legacy.size;t._blob=legacy;storageMode="opfs";
+   }else{
+    const info=await writeBlobToIDBChunksV4(t.id,legacy,legacy.type||"application/octet-stream");
+    t.storage="idb-v4";t.size=info.size;t._blob=legacy;storageMode="idb-v4";
+   }
+   await deleteLegacyAudio(t);
+  }catch(e){console.warn("Legacy audio migration failed",e);t._blob=legacy}
+  return legacy;
  }
- try{const b=await idbGet("files",t.id);if(b?.size){t._blob=b;return b}}catch{}
  return null;
 }
 async function removeAudio(t){
  t._blob=null;
- if(rootDir){try{const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});await dir.removeEntry(t.id)}catch{}}
- try{await idbDel("files",t.id)}catch{}
- try{await idbDeleteAudioChunks(t.id)}catch{}
+ if(rootDir){
+  try{const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});await dir.removeEntry(t.id)}catch{}
+ }
+ try{await idbDeleteAudioV4(t.id)}catch{}
+ await deleteLegacyAudio(t);
 }
+
 function normalizeStats(){
  const d={totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0};
  const s=Object.assign(d,state.stats||{});

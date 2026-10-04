@@ -463,6 +463,22 @@ async function removeAudio(t){
  try{await idbDel("files",t.id)}catch{}
  try{await idbDeleteAudioChunks(t.id)}catch{}
 }
+function ensureStateCollections(){
+ state.tracks=Array.isArray(state.tracks)?state.tracks:[];
+ state.albums=Array.isArray(state.albums)?state.albums:[];
+ state.artists=Array.isArray(state.artists)?state.artists:[];
+ state.playlists=Array.isArray(state.playlists)?state.playlists:[];
+ state.folders=Array.isArray(state.folders)?state.folders:[];
+ state.liked=Array.isArray(state.liked)?state.liked:[];
+ state.recent=Array.isArray(state.recent)?state.recent:[];
+ state.queue=Array.isArray(state.queue)?state.queue:[];
+ state.settings=state.settings&&typeof state.settings==="object"?state.settings:{volume:.9,repeat:"off",shuffle:false};
+ state.settings.volume=Number.isFinite(Number(state.settings.volume))?Number(state.settings.volume):.9;
+ state.settings.repeat=["off","all","one"].includes(state.settings.repeat)?state.settings.repeat:"off";
+ state.settings.shuffle=!!state.settings.shuffle;
+ state.folders.forEach(ensureFolderArrays);
+ return state;
+}
 function normalizeStats(){
  const d={totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0};
  const s=Object.assign(d,state.stats||{});
@@ -765,6 +781,7 @@ function homeSectionHead(title,count,view,createAction,showCreate){
  return '<div class="sectionHead"><strong>'+title+'</strong><div class="homeSectionActions">'+more+action+'</div></div>';
 }
 function renderHome(){
+ ensureStateCollections();
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,4);
  const albums=state.albums.slice(0,4),artists=state.artists.slice(0,4),playlists=state.playlists.slice(0,4),folders=state.folders.slice(0,4);
  $("#main").innerHTML=
@@ -840,6 +857,7 @@ function renderMore(){
 }
 
 function render(){
+ ensureStateCollections();
  renderProfileButton();
  $("#nav").innerHTML=navHtml();
  if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="recent")renderRecently();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else if(state.view==="folders")renderFolders();else if(state.view==="folder"&&state.detail)showFolder(state.detail);else renderMore();
@@ -1238,6 +1256,7 @@ function choosePresetImportMode(){
 }
 async function importPreset(file){
  if(!file)return;
+ ensureStateCollections();
  busyShow("Importing preset","Preparing "+((Number(file.size)||0)/1073741824).toFixed(2)+" GB preset…");
  let importMode="add",importedTrackIds=[],importedArtistIds=[],importedAlbumIds=[],importedPlaylistIds=[],importedFolderIds=[];
  try{
@@ -1614,7 +1633,7 @@ async function boot(){
  }catch(e){console.error("boot storage",e)}
 }
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=20261004-hotfix4",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
+ navigator.serviceWorker.register("./sw.js?v=20261004-hotfix5",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
 }
 boot().then(()=>{setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},400)});
 })();

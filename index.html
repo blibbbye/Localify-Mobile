@@ -305,46 +305,108 @@ async function writeZipEntryToOPFS(id,file,e){
   return true;
  }catch(e2){try{await w.abort()}catch{};throw e2}
 }
-const AUDIO_CHUNK_SIZE=4*1024*1024;
-async function writeBlobToIDBChunks(id,blob,type="application/octet-stream"){
- await idbDeleteAudioChunks(id);
- let reader=blob.stream().getReader(),parts=0,total=0,buf=new Uint8Array(AUDIO_CHUNK_SIZE),used=0;
+const AUDIO_CHUNK_SIZE=2*1024*1024;
+const AUDIO_V4_PREFIX="v4/";
+function binaryArrayBuffer(value){
+ if(value instanceof ArrayBuffer)return value;
+ if(ArrayBuffer.isView(value))return value.buffer.slice(value.byteOffset,value.byteOffset+value.byteLength);
+ throw new TypeError("Localify storage accepts binary ArrayBuffers only.");
+}
+function audioV4Key(id,part){return AUDIO_V4_PREFIX+String(id)+"/"+String(part)}
+function audioV4Prefix(id){return AUDIO_V4_PREFIX+String(id)+"/"}
+async function idbDeleteAudioV4(id){
+ if(!db)return;
+ const prefix=audioV4Prefix(id);
+ await new Promise((resolve,reject)=>{
+  let tx;
+  try{
+   tx=db.transaction("audioChunksV4","readwrite");
+   const store=tx.objectStore("audioChunksV4");
+   const req=store.openCursor(IDBKeyRange.bound(prefix,prefix+"\\uffff"));
+   req.onsuccess=e=>{const cur=e.target.result;if(!cur)return cur.delete(),cur.continue()};
+   req.onerror=()=>reject(req.error||new Error("Could not clear saved audio."));
+   tx.oncomplete=()=>resolve();
+   tx.onerror=()=>reject(tx.error||new Error("Could not clear saved audio."));
+   tx.onabort=()=>reject(tx.error||new Error("Could not clear saved audio."));
+  }catch(e){reject(e)}
+ });
+ try{await idbDel("audioMetaV4",id)}catch{}
+}
+async function idbPutV4Part(key,data){await idbPut("audioChunksV4",key,binaryArrayBuffer(data))}
+let storageWriteLock=Promise.resolve();
+async function withStorageWriteLock(fn){
+ const previous=storageWriteLock;
+ let release;
+ storageWriteLock=new Promise(resolve=>{release=resolve});
+ await previous;
+ try{return await fn()}finally{release()}
+}
+async function writeArrayBufferStreamToV4(id,stream,type="application/octet-stream"){
+ await idbDeleteAudioV4(id);
+ const reader=stream.getReader();
+ let part=0,total=0,buf=new Uint8Array(AUDIO_CHUNK_SIZE),used=0;
  try{
   while(true){
    const step=await reader.read();
    if(step.done)break;
-   let src=step.value,off=0;
-   while(off<src.length){
-    const take=Math.min(AUDIO_CHUNK_SIZE-used,src.length-off);
-    buf.set(src.subarray(off,off+take),used);used+=take;off+=take;total+=take;
-    if(used===AUDIO_CHUNK_SIZE){await idbPut("audioChunks",[id,parts],buf.buffer.slice(0,used));parts++;buf=new Uint8Array(AUDIO_CHUNK_SIZE);used=0}
+   const bytes=new Uint8Array(binaryArrayBuffer(step.value));
+   let off=0;
+   while(off<bytes.length){
+    const take=Math.min(AUDIO_CHUNK_SIZE-used,bytes.length-off);
+    buf.set(bytes.subarray(off,off+take),used);used+=take;off+=take;total+=take;
+    if(used===AUDIO_CHUNK_SIZE){
+     await idbPutV4Part(audioV4Key(id,part++),buf.buffer.slice(0,used));
+     buf=new Uint8Array(AUDIO_CHUNK_SIZE);used=0;
+     if(part%8===0)await new Promise(resolve=>setTimeout(resolve,0));
+    }
    }
   }
-  if(used)await idbPut("audioChunks",[id,parts++],buf.buffer.slice(0,used));
-  await idbPut("audioMeta",id,{size:total,chunks:parts,type:String(type||"application/octet-stream")});
+  if(used)await idbPutV4Part(audioV4Key(id,part++),buf.buffer.slice(0,used));
+  await idbPut("audioMetaV4",id,{version:4,size:total,chunks:part,type:String(type||"application/octet-stream"),updatedAt:Date.now()});
+  return {size:total,chunks:part};
  }catch(e){
-  try{await idbDeleteAudioChunks(id)}catch{}
+  try{await idbDeleteAudioV4(id)}catch{}
   throw e;
  }
 }
-async function writeStreamToIDBChunks(id,stream,type="application/octet-stream"){
- await idbDeleteAudioChunks(id);
- const reader=stream.getReader();
- let parts=0,total=0,buf=new Uint8Array(AUDIO_CHUNK_SIZE),used=0;
+async function writeBlobToIDBChunksV4(id,blob,type="application/octet-stream"){
+ return withStorageWriteLock(()=>writeArrayBufferStreamToV4(id,blob.stream(),type));
+}
+async function writeStreamToIDBChunksV4(id,stream,type="application/octet-stream"){
+ return withStorageWriteLock(()=>writeArrayBufferStreamToV4(id,stream,type));
+}
+async function loadAudioV4(t){
  try{
-  while(true){
-   const step=await reader.read();
-   if(step.done)break;
-   const src=step.value;let off=0;
-   while(off<src.length){
-    const take=Math.min(AUDIO_CHUNK_SIZE-used,src.length-off);
-    buf.set(src.subarray(off,off+take),used);used+=take;off+=take;total+=take;
-    if(used===AUDIO_CHUNK_SIZE){await idbPut("audioChunks",[id,parts],buf.buffer.slice(0,used));parts++;buf=new Uint8Array(AUDIO_CHUNK_SIZE);used=0}
-   }
+  const meta=await idbGet("audioMetaV4",t.id);
+  if(!meta?.chunks)return null;
+  const chunks=[];
+  for(let i=0;i<meta.chunks;i++){
+   const part=await idbGet("audioChunksV4",audioV4Key(t.id,i));
+   if(!(part instanceof ArrayBuffer))throw new Error("Saved audio storage is incomplete.");
+   chunks.push(part);
   }
-  if(used)await idbPut("audioChunks",[id,parts++],buf.buffer.slice(0,used));
-  await idbPut("audioMeta",id,{size:total,chunks:parts,type:String(type||"application/octet-stream")});
- }catch(e){try{await idbDeleteAudioChunks(id)}catch{};throw e}
+  const b=new Blob(chunks,{type:meta.type||"application/octet-stream"});
+  if(Number(meta.size)!==b.size)throw new Error("Saved audio size does not match its storage record.");
+  t._blob=b;t.storage="idb-v4";t.size=b.size;
+  return b;
+ }catch(e){console.warn("Localify v4 audio read failed",e);return null}
+}
+async function loadLegacyAudio(t){
+ if(t.storage==="idb-chunks"){
+  try{
+   const meta=await idbGet("audioMeta",t.id);
+   if(meta?.chunks){
+    const chunks=await idbGetAll("audioChunks",IDBKeyRange.bound([t.id,0],[t.id,meta.chunks-1]));
+    if(chunks.length===meta.chunks)return new Blob(chunks,{type:meta.type||"application/octet-stream"});
+   }
+  }catch(e){console.warn("Legacy chunk read failed",e)}
+ }
+ try{const b=await idbGet("files",t.id);if(b?.size)return b}catch{}
+ return null;
+}
+async function deleteLegacyAudio(t){
+ try{await idbDel("files",t.id)}catch{}
+ try{await idbDeleteAudioChunks(t.id)}catch{}
 }
 function zipEntryStream(file,e){
  const headPromise=file.slice(e.offset,e.offset+30).arrayBuffer();

@@ -170,7 +170,7 @@ function icon(name){
 }
 function formatBytes(n){const v=Math.max(0,Number(n)||0);if(v<1024)return Math.round(v)+" B";if(v<1048576)return (v/1024).toFixed(v<10240?1:0)+" KB";if(v<1073741824)return (v/1048576).toFixed(v<10485760?1:0)+" MB";return (v/1073741824).toFixed(v<10737418240?2:1)+" GB"}
 function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),3300)}
-let mobileAudioUnlocked=false;
+let mobileAudioUnlocked=false,playbackRecoveryUntil=0,playbackRecoveryAttempts=0,playbackWanted=false,playbackRecoveryTimer=0;
 function unlockMobileAudio(){
  if(mobileAudioUnlocked)return;
  try{
@@ -191,13 +191,12 @@ window.__localifyAudioFocus=function(gained,transientFocus){
  if(!gained){
   if(!state.currentId||audio.paused)return;
   localifyFocusResume=!!transientFocus;
-  fadeAudioVolume(transientFocus?0.05:0,transientFocus?220:260);
-  if(!transientFocus)setTimeout(()=>{if(!localifyFocusResume&&state.currentId)audio.pause()},280);
+  fadeAudioVolume(transientFocus?0.12:0.04,transientFocus?180:260);
   return;
  }
  if(localifyFocusResume&&state.currentId){
   localifyFocusResume=false;
-  audio.volume=0;
+  audio.volume=0.04;
   audio.play().catch(()=>{});
   fadeAudioVolume(target,320);
  }
@@ -1140,16 +1139,40 @@ function showDetail(type,id){
 async function playTrack(id){
  if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{}
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
+ playbackWanted=true;playbackRecoveryUntil=Date.now()+9000;playbackRecoveryAttempts=0;clearTimeout(playbackRecoveryTimer);
  prepareQueueForTrack(id);
  try{if(!storageReady)await storageWait(20000)}catch{}
  recordListeningProgress();
- const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
- currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
- setNativePlaybackStatus(t,true);
- state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));if(!state.queue.includes(id))state.queue.push(id);state.queueIndex=state.queue.indexOf(id);
- audio.volume=state.settings.volume??.9;updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
- try{await audio.play();recordPlay(t);if(state.detail?.type==="folder")showFolder(state.detail.id);else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);else render()}catch(e){toast("Press play again to start audio.");}
+ const b=await loadAudio(t);if(!b){playbackWanted=false;toast("This song's audio is missing. Please re-import it.");return}
+ currentBlob=b;
+ if(audioUrl)try{URL.revokeObjectURL(audioUrl)}catch{}
+ audioUrl=URL.createObjectURL(b);
+ audio.preload="auto";
+ audio.src=audioUrl;
+ state.currentId=id;
+ state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);
+ state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));
+ if(!state.queue.includes(id))state.queue.push(id);
+ state.queueIndex=state.queue.indexOf(id);
+ audio.volume=Math.max(0,Math.min(1,Number(state.settings.volume??.9)));
+ updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
+ try{
+   audio.load();
+   await audio.play();
+   playbackRecoveryUntil=0;playbackRecoveryAttempts=0;
+   recordPlay(t);
+   setNativePlaybackStatus(t,true);
+   pushDiscordPresence();
+   if(state.detail?.type==="folder")showFolder(state.detail.id);
+   else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);
+   else render();
+ }catch(e){
+   playbackWanted=false;
+   setNativePlaybackStatus(t,false);
+   toast("Press play again to start audio.");
+ }
 }
+
 function queuePlay(id){const t=state.tracks.find(x=>x.id===id);if(!t)return;state.queue=[id,...state.queue.filter(x=>x!==id)];state.queueIndex=0;playTrack(id)}
 function playList(ts,start){
  const list=ts.filter(Boolean);if(!list.length)return;
@@ -1187,7 +1210,7 @@ function ensurePlayerQueue(){
  return !!state.queue.length;
 }
 function next(){
- if(state.settings.repeat==="one"){audio.currentTime=0;audio.play().catch(()=>{});return}
+ if(state.settings.repeat==="one"){playbackWanted=true;audio.currentTime=0;audio.play().catch(()=>{});return}
  if(!ensurePlayerQueue())return;
  if(state.settings.shuffle&&state.queue.length>1){
   const current=state.queue[state.queueIndex];
@@ -1197,7 +1220,7 @@ function next(){
   state.queueIndex=state.queue.length-1;
  }else{
   let n=state.queueIndex+1;
-  if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
+  if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{playbackWanted=false;audio.pause();return}}
   state.queueIndex=n;
  }
  playTrack(state.queue[state.queueIndex]);
@@ -1229,14 +1252,14 @@ async function updateMediaSession(t){
  let artwork=[];
  try{const cover=await coverFor(t);if(cover)artwork=[{src:cover,sizes:"512x512",type:"image/*"}]}catch{}
  try{ms.metadata=new MediaMetadata({title:trackTitle(t),artist:artistText(t)===NONE?"":artistText(t),album:albumName(t)===NONE?"":albumName(t),artwork});ms.playbackState=audio.paused?"paused":"playing"}catch{}
- try{ms.setActionHandler("play",()=>audio.play().catch(()=>{}))}catch{}
- try{ms.setActionHandler("pause",()=>audio.pause())}catch{}
+ try{ms.setActionHandler("play",()=>{playbackWanted=true;audio.play().catch(()=>{})})}catch{}
+ try{ms.setActionHandler("pause",()=>{playbackWanted=false;audio.pause()})}catch{}
  try{ms.setActionHandler("previoustrack",prev)}catch{}
  try{ms.setActionHandler("nexttrack",next)}catch{}
  try{ms.setActionHandler("seekbackward",()=>{audio.currentTime=Math.max(0,audio.currentTime-10);updateMediaSessionPosition()})}catch{}
  try{ms.setActionHandler("seekforward",()=>{audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10);updateMediaSessionPosition()})}catch{}
  try{ms.setActionHandler("seekto",d=>{if(!d)return;const p=Math.max(0,Math.min(audio.duration||0,Number(d.seekTime)||0));if(d.fastSeek&&typeof audio.fastSeek==="function")audio.fastSeek(p);else audio.currentTime=p;updateMediaSessionPosition()})}catch{}
- try{ms.setActionHandler("stop",()=>{audio.pause();audio.currentTime=0;updateMediaSessionPosition()})}catch{}
+ try{ms.setActionHandler("stop",()=>{playbackWanted=false;audio.pause();audio.currentTime=0;updateMediaSessionPosition()})}catch{}
 }
 function updateMediaSessionPosition(){
  if(!("mediaSession"in navigator)||!audio.duration||!Number.isFinite(audio.duration))return;
@@ -1558,14 +1581,28 @@ function bindEvents(){
  try{await importPreset(f)}catch(err){console.error("preset import picker",err);busyHide();toast(err?.message||"Could not import preset.")}
 });
  $("#profileBtn")?.addEventListener("click",openProfile);
- $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
+ $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused){playbackWanted=true;playbackRecoveryUntil=Date.now()+5000;audio.play().catch(()=>{})}else{playbackWanted=false;audio.pause()}};
  $("#prevBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();prev()}; $("#playerMoreBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openPlayerControls()}); $("#nextBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();next()};const seekProgress=e=>{if(audio.duration){audio.currentTime=(+e.target.value/1000)*audio.duration;updateMediaSessionPosition();}};$("#progress").oninput=seekProgress;$("#progress").onchange=seekProgress;
  audio.addEventListener("play",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="playing"}catch{};const t=state.tracks.find(x=>x.id===state.currentId);setNativePlaybackStatus(t,true);renderPlayer();scheduleSave();pushDiscordPresence()});
- audio.addEventListener("pause",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};const t=state.tracks.find(x=>x.id===state.currentId);setNativePlaybackStatus(t,false);recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
- audio.addEventListener("timeupdate",()=>{recordListeningProgress();updatePlayerProgressOnly();updateMediaSessionPosition();});
- audio.addEventListener("loadedmetadata",()=>{updatePlayerProgressOnly();updateMediaSessionPosition();});
- audio.addEventListener("ended",()=>{recordListeningProgress();next();pushDiscordPresence()});
- document.addEventListener("visibilitychange",()=>{try{const t=state.tracks.find(x=>x.id===state.currentId);if("mediaSession"in navigator)navigator.mediaSession.playbackState=t?(audio.paused?"paused":"playing"):"none"}catch{}});
+ audio.addEventListener("pause",()=>{
+  try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};
+  const t=state.tracks.find(x=>x.id===state.currentId);
+  if(playbackWanted&&Date.now()<playbackRecoveryUntil&&!audio.ended){
+    clearTimeout(playbackRecoveryTimer);
+    const attempt=++playbackRecoveryAttempts;
+    playbackRecoveryTimer=setTimeout(()=>{if(playbackWanted&&Date.now()<playbackRecoveryUntil&&!audio.ended){try{audio.play().catch(()=>{})}catch{}}},Math.min(900,180+attempt*140));
+    return;
+  }
+  setNativePlaybackStatus(t,false);recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence();
+ });
+ audio.addEventListener("timeupdate",()=>{recordListeningProgress();updatePlayerProgressOnly();updateMediaSessionPosition()});
+ audio.addEventListener("loadedmetadata",()=>{updatePlayerProgressOnly();updateMediaSessionPosition()});
+ audio.addEventListener("canplay",()=>{if(playbackWanted&&!audio.ended&&audio.paused&&Date.now()<playbackRecoveryUntil){try{audio.play().catch(()=>{})}catch{}}});
+ audio.addEventListener("waiting",()=>{if(playbackWanted&&Date.now()<playbackRecoveryUntil){clearTimeout(playbackRecoveryTimer);playbackRecoveryTimer=setTimeout(()=>{if(playbackWanted&&audio.paused)audio.play().catch(()=>{})},400)}});
+ audio.addEventListener("stalled",()=>{if(playbackWanted&&Date.now()<playbackRecoveryUntil){try{audio.load();audio.play().catch(()=>{})}catch{}}});
+ audio.addEventListener("error",()=>{if(playbackWanted&&Date.now()<playbackRecoveryUntil){clearTimeout(playbackRecoveryTimer);playbackRecoveryTimer=setTimeout(()=>{if(playbackWanted)audio.play().catch(()=>{})},500)}});
+ audio.addEventListener("ended",()=>{playbackWanted=false;recordListeningProgress();next();pushDiscordPresence()});
+ document.addEventListener("visibilitychange",()=>{try{const t=state.tracks.find(x=>x.id===state.currentId);if("mediaSession"in navigator)navigator.mediaSession.playbackState=t?(audio.paused?"paused":"playing"):"none"}catch{};if(document.visibilityState==="visible"&&playbackWanted&&audio.paused&&!audio.ended){setTimeout(()=>{if(playbackWanted&&audio.paused)audio.play().catch(()=>{})},100)}});
  window.addEventListener("pagehide",()=>{recordListeningProgress();scheduleSave()});
 
  document.addEventListener("click",async e=>{

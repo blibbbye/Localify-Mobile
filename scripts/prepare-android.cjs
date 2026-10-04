@@ -48,8 +48,8 @@ public final class LocalifyPlaybackService extends Service {
     private static final int NOTIFICATION_ID = 7001;
     private static final String CHANNEL_ID = "localify_playback";
     private MediaSession mediaSession;
-    private String title = "Localify Mobile";
-    private String artist = "Localify playback";
+    private String title = "Localio Mobile";
+    private String artist = "Localio playback";
     private boolean playing = false;
     private android.os.PowerManager.WakeLock wakeLock;
 
@@ -61,12 +61,12 @@ public final class LocalifyPlaybackService extends Service {
         instance = this;
         android.os.PowerManager pm = (android.os.PowerManager)getSystemService(POWER_SERVICE);
         if(pm != null) {
-            wakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "LocalifyMobile:Playback");
+            wakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "LocalioMobile:Playback");
             try { wakeLock.acquire(); } catch(Exception ignored) {}
         }
         createChannel();
 
-        mediaSession = new MediaSession(this, "LocalifyMobile");
+        mediaSession = new MediaSession(this, "LocalioMobile");
         mediaSession.setFlags(
             MediaSession.FLAG_HANDLES_MEDIA_BUTTONS |
             MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -114,7 +114,7 @@ public final class LocalifyPlaybackService extends Service {
         MediaMetadata metadata = new MediaMetadata.Builder()
             .putString(MediaMetadata.METADATA_KEY_TITLE, title)
             .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
-            .putString(MediaMetadata.METADATA_KEY_ALBUM, "Localify Mobile")
+            .putString(MediaMetadata.METADATA_KEY_ALBUM, "Localio Mobile")
             .build();
         mediaSession.setMetadata(metadata);
 
@@ -190,7 +190,7 @@ public final class LocalifyPlaybackService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // Keep the playback service alive when the user swipes Localify from recents.
+        // Keep the playback service alive when the user swipes Localio from recents.
         // Playback itself remains owned by the WebView while the Android service keeps
         // the app process eligible for background playback.
         super.onTaskRemoved(rootIntent);
@@ -200,10 +200,10 @@ public final class LocalifyPlaybackService extends Service {
         if (Build.VERSION.SDK_INT < 26) return;
         NotificationChannel c = new NotificationChannel(
             CHANNEL_ID,
-            "Localify playback",
+            "Localio playback",
             NotificationManager.IMPORTANCE_LOW
         );
-        c.setDescription("Keeps Localify playback active in the background.");
+        c.setDescription("Keeps Localio playback active in the background.");
         NotificationManager m = getSystemService(NotificationManager.class);
         if (m != null) m.createNotificationChannel(c);
     }
@@ -258,7 +258,7 @@ if(!manifest.includes("LocalifyPlaybackService")){
 fs.writeFileSync(manifestPath,manifest,"utf8");
 
 // Add the small JS bridge used by index.html for audio focus/background playback.
-if(!source.includes('"LocalifyNative"')){
+if(!source.includes('"LocalioNative"')){
   const imports=[
     "import android.content.Intent;",
     "import android.media.AudioAttributes;",
@@ -383,7 +383,7 @@ if(!source.includes('"LocalifyNative"')){
                 abandonLocalifyAudioFocus();
                 stopService(new Intent(MainActivity.this, LocalifyPlaybackService.class));
             }
-        }, "LocalifyNative");
+        }, "LocalioNative");
     }
 
     @Override
@@ -420,4 +420,4 @@ if(!source.includes('"LocalifyNative"')){
   fs.writeFileSync(mainActivity,source,"utf8");
 }
 
-console.log("Localify Mobile Android native playback setup complete.");
+console.log("Localio Mobile Android native playback setup complete.");

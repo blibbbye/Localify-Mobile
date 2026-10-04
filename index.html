@@ -301,6 +301,7 @@ async function saveZipAudio(t,file,e){
  if(rootDir){
   try{await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}catch(err){
    console.warn("OPFS ZIP write failed",err);
+   rootDir=null;
   }
  }
  const blob=await zipEntryBlob(file,e);
@@ -1109,11 +1110,14 @@ async function importPreset(file){
    a.id=state.albums.some(x=>x.id===a.id)?uid():oldId;state.albums.push(a);albumIdMap.set(oldId,a.id);importedAlbumIds.push(a.id);
   }
 
-  let done=0;
+  let done=0,lastImportPaint=0;
   for(const src0 of manifest.tracks){
    busyCheck();done++;
    const title=src0.title||src0.fileName||"song";
-   busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
+   if(done===1||done===manifest.tracks.length||done-lastImportPaint>=8){
+    lastImportPaint=done;
+    busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
+   }
    const t=JSON.parse(JSON.stringify(src0)),sourceId=t.id||uid(),originalId=sourceId;
    t.id=state.tracks.some(x=>x.id===sourceId)?uid():sourceId;
    const mappedArtists=(Array.isArray(src0.artistIds)?src0.artistIds:[]).map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
@@ -1125,8 +1129,8 @@ async function importPreset(file){
    const e=t.audioFile?index.get(t.audioFile):null;
    if(e){await saveZipAudio(t,file,e)}else if(t.hasAudio)throw new Error("Missing audio for "+title);
    t._blob=null;t.blob=null;state.tracks.push(t);trackIdMap.set(originalId,t.id);importedTrackIds.push(t.id);
-   if(done%10===0)await saveMeta(false);
-   await new Promise(resolve=>setTimeout(resolve,0));
+   if(done%100===0)await saveMeta(false);
+   if(done%8===0)await new Promise(resolve=>setTimeout(resolve,0));
   }
 
   busyCheck();
@@ -1153,13 +1157,12 @@ async function importPreset(file){
   console.error("Localify Mobile preset import failed",e);
   if(e?.name==="AbortError")toast("Preset import cancelled.");
   else{
-   if(importMode==="add"){
-    for(const id of importedTrackIds){try{await removeAudio({id})}catch{}}
-    const at=new Set(importedTrackIds),aa=new Set(importedArtistIds),ab=new Set(importedAlbumIds),ap=new Set(importedPlaylistIds),af=new Set(importedFolderIds);
-    state.tracks=state.tracks.filter(t=>!at.has(t.id));state.artists=state.artists.filter(x=>!aa.has(x.id));state.albums=state.albums.filter(x=>!ab.has(x.id));state.playlists=state.playlists.filter(x=>!ap.has(x.id));state.folders=state.folders.filter(x=>!af.has(x.id));
-   }
-   try{await saveMeta(true)}catch{}
-   toast((e?.message||"Could not import preset.")+" Nothing from this failed import was kept.");
+   // Keep every song that was successfully written before the failure.
+   // This is important for large presets: a late storage/ZIP error must not
+   // force the browser to delete gigabytes of already imported audio.
+   try{await saveMeta(true)}catch(saveErr){console.warn("Could not checkpoint partial import",saveErr)}
+   const kept=importedTrackIds.length;
+   toast((e?.message||"Could not import preset.")+(kept?" Completed "+kept+" songs were kept.":""));
   }
  }finally{busyHide()}
 }

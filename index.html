@@ -710,6 +710,7 @@ async function readEmbeddedAudioMetadata(file){
       else if(id==="TALB")out.album=value;
       else if(id==="TDRC"||id==="TYER")out.year=(value.match(/\d{4}/)||[])[0]||value;
       else if(id==="TCON")out.genre=value.replace(/^\(\d+\)\s*/,"");
+      else if(id==="TENC"||id==="TSSE")out.editor=value;
       else if(id==="TRCK")out.track=parseInt((value.match(/\d+/)||[])[0],10)||null;
       else if(id==="TPOS")out.disc=parseInt((value.match(/\d+/)||[])[0],10)||null;
      }
@@ -748,7 +749,12 @@ async function addFiles(files,context={}){
    if(albumTitle){
     album=state.albums.find(a=>String(a.title||"").trim().toLowerCase()===albumTitle.toLowerCase())||null;
     if(!album){album={id:uid(),title:albumTitle,artistIds:[...artistIds],artistNames:artistNames.join(", "),artist:artistNames.join(", "),cover:null,year:String(tags.year||""),genre:String(tags.genre||"")};state.albums.push(album)}
-    else if(artistIds.length&&!Array.isArray(album.artistIds)){album.artistIds=[...artistIds]}
+    else{
+     if(artistIds.length&&!Array.isArray(album.artistIds))album.artistIds=[...artistIds];
+     if(tags.year&&!album.year)album.year=String(tags.year);
+     if(tags.genre&&!album.genre)album.genre=String(tags.genre);
+     if(tags.albumArtist&&!album.albumArtist)album.albumArtist=String(tags.albumArtist);
+    }
    }
    const t={
     id:uid(),
@@ -878,14 +884,25 @@ async function readZipIndex(file){
  return out;
 }
 async function zipEntryBlob(file,e){
- if(e.method!==0)throw new Error("This preset uses compressed audio. Use a Localify v2 preset exported by the current website.");
- const head=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());if(head.getUint32(0,true)!==0x04034b50)throw new Error("A preset audio entry is damaged.");
- const nl=head.getUint16(26,true),el=head.getUint16(28,true),start=e.offset+30+nl+el;
- return file.slice(start,start+e.compSize);
+ const head=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());
+ if(head.getUint32(0,true)!==0x04034b50)throw new Error("A preset audio entry is damaged.");
+ const nl=head.getUint16(26,true),el=head.getUint16(28,true),start=e.offset+30+nl+el,raw=file.slice(start,start+e.compSize);
+ if(e.method===0)return raw;
+ if(e.method===8&&typeof DecompressionStream!=="undefined"){
+  try{return await new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob()}catch(err){throw new Error("Could not decompress one of the preset audio files.") }
+ }
+ throw new Error("This preset uses a ZIP compression method that Localify Mobile cannot read in this browser.");
 }
 async function importPreset(file){
  if(!file)return;
  await ensureStorageForAction();
+ try{
+  const estimate=navigator.storage?.estimate?await navigator.storage.estimate():null;
+  const free=estimate?.quota&&estimate?.usage?Math.max(0,Number(estimate.quota)-Number(estimate.usage)):null;
+  if(free!==null&&Number(file.size)>free)throw new Error("This preset is larger than the browser's currently available storage. Free some device storage or use a browser with a larger storage quota.");
+ }catch(e){
+  if(e?.message?.includes("larger storage quota"))throw e;
+ }
  busyShow("Importing preset","Opening the preset index…");
  try{
   busyCheck();

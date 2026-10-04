@@ -915,7 +915,7 @@ function renderPlaylists(){
 function renderMore(){
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>More stuff</p></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Music</span></div><div class="morePanel"><button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button></div></div>'+
- '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button><button class="sheetItem" data-action="sharePreset"><span class="i" viewBox="0 0 24 24"></span><span>Share preset preview</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="morePanel"><button class="btn danger" data-action="deleteLibrary">'+icon("trash")+'Delete library</button></div></div>';
 }
 
@@ -941,6 +941,34 @@ function openSheet(html){
  $("#sheetShade").classList.add("open");
 }
 function closeSheet(){$("#sheetShade").classList.remove("open")}
+function buildPresetSharePayload(){
+ const folders=Array.isArray(state.folders)?state.folders:[];
+ const artistText=a=>String(a?.name||"Unknown Artist");
+ const songText=t=>String(t?.title||t?.fileName||"Untitled song");
+ return {version:1,name:"Localify Preset",createdAt:new Date().toISOString(),totalTracks:state.tracks.length,
+  counts:{albums:state.albums.length,artists:state.artists.length,songs:state.tracks.length,folders:folders.length},
+  albums:state.albums.slice(0,4).map(a=>({title:String(a?.title||"Untitled album"),artist:Array.isArray(a?.artistNames)?a.artistNames.join(", "):String(a?.artist||"Unknown Artist")})),
+  artists:state.artists.slice(0,4).map(artistText).map(name=>({name})),
+  songs:state.tracks.slice(0,4).map(t=>({title:songText(t),artist:String(t?.artist||"Unknown Artist")})),
+  folders:folders.slice(0,4).map(f=>({name:String(f?.name||"Untitled folder"),extra:((f?.albumIds||[]).length+(f?.trackIds||[]).length)+" items"}))};
+}
+function presetShareUrl(){
+ const bytes=new TextEncoder().encode(JSON.stringify(buildPresetSharePayload()));
+ let bin="";for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+ const data=btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+ return new URL("share.html",location.href).href+"#"+data;
+}
+async function sharePresetPreview(){
+ const url=presetShareUrl();
+ try{
+  if(navigator.share)await navigator.share({title:"Localify Preset Preview",text:"Preview this Localify preset",url});
+  else await navigator.clipboard.writeText(url);
+  toast("Preset preview link copied/shared.");
+ }catch(e){
+  if(e?.name==="AbortError")return;
+  try{await navigator.clipboard.writeText(url);toast("Preset preview link copied.");}catch{prompt("Copy this Localify preview link:",url);}
+ }
+}
 function openLibraryTools(){
  openSheet('<h2>Library Tools</h2>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Add music</span></div><div class="sheetGrid"><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button></div></div>'+
@@ -1661,6 +1689,7 @@ function bindEvents(){
   if(a==="openLibraryTools"){openLibraryTools();return}
   if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
   if(a==="exportPreset"){closeSheet();exportPreset();return}
+  if(a==="sharePreset"){closeSheet();sharePresetPreview();return}
   if(a==="backupMeta"){closeSheet();backupMeta();return}
   if(a==="storageInfo"){closeSheet();storageInfo();return}
   if(a==="accountSettings"){closeSheet();openAccountSettings();return}

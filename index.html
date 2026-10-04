@@ -320,15 +320,23 @@ async function idbDeleteAudioV4(id){
 }
 async function idbPutV4Part(key,data){
  const input=new Uint8Array(data);
- const safeCopy=input.slice().buffer;
+ const typedCopy=input.slice();
+ const bufferCopy=typedCopy.buffer.slice(typedCopy.byteOffset,typedCopy.byteOffset+typedCopy.byteLength);
  let lastError=null;
  for(let attempt=0;attempt<4;attempt++){
   try{
-   await idbPut("audioChunksV4",key,safeCopy);
+   // Prefer a copied Uint8Array. Some mobile browsers are more reliable cloning typed arrays than large raw buffers.
+   await idbPut("audioChunksV4",key,typedCopy);
    return true;
   }catch(e){
    lastError=e;
-   if(attempt<3)await sleep(75*(attempt+1));
+   try{
+    await idbPut("audioChunksV4",key,bufferCopy);
+    return true;
+   }catch(e2){
+    lastError=e2;
+    if(attempt<3)await sleep(75*(attempt+1));
+   }
   }
  }
  throw lastError||new Error("IndexedDB audio write failed.");
@@ -398,8 +406,9 @@ async function loadAudioV4(t){
   const chunks=[];
   for(let i=0;i<meta.chunks;i++){
    const part=await idbGet("audioChunksV4",audioV4Key(t.id,i));
-   if(!(part instanceof ArrayBuffer))throw new Error("Saved audio storage is incomplete.");
-   chunks.push(part);
+   if(part instanceof ArrayBuffer)chunks.push(part);
+   else if(ArrayBuffer.isView(part))chunks.push(part.buffer.slice(part.byteOffset,part.byteOffset+part.byteLength));
+   else throw new Error("Saved audio storage is incomplete.");
   }
   const b=new Blob(chunks,{type:meta.type||"application/octet-stream"});
   if(Number(meta.size)!==b.size)throw new Error("Saved audio size does not match its storage record.");

@@ -440,6 +440,18 @@ async function writeZipEntryToOPFS(id,file,e){
  const w=await fh.createWritable();
  try{await stream.pipeTo(w)}catch(err){try{await w.abort()}catch{};throw err}
 }
+async function storageEstimateText(){
+ try{
+  if(!navigator.storage?.estimate)return "";
+  const x=await navigator.storage.estimate(),used=Number(x.usage)||0,quota=Number(x.quota)||0;
+  return quota?" Storage estimate: "+formatBytes(used)+" / "+formatBytes(quota)+".":"";
+ }catch{return ""}
+}
+function storageWriteError(prefix,size,err){
+ const name=String(err?.name||"").trim();
+ const msg=String(err?.message||"").trim().replace(/\\s+/g," ").slice(0,180);
+ return prefix+" "+formatBytes(size)+" of audio could not be saved after retries."+(name||msg?(" Error: "+[name,msg].filter(Boolean).join(" — ")+"."):"")+ " Completed songs were kept.";
+}
 async function saveAudio(t,blob){
  if(!blob||typeof blob.stream!=="function")throw new Error("Invalid audio file.");
  if(rootDir){
@@ -452,7 +464,7 @@ async function saveAudio(t,blob){
   const info=await writeBlobToIDBChunksV4(t.id,blob,blob.type||"application/octet-stream");
   t.storage="idb-v4";t.size=info.size;t._blob=null;storageMode="idb-v4";
  }catch(e){
-  throw new Error("Could not save "+formatBytes(blob.size)+" of audio. Browser storage is full or unavailable. Completed songs are kept.");
+  throw new Error(await storageWriteError("Could not save",Number(blob.size)||0,e)+await storageEstimateText());
  }
 }
 async function saveZipAudio(t,file,e){
@@ -464,13 +476,13 @@ async function saveZipAudio(t,file,e){
   }catch(err){console.warn("OPFS preset write failed; switching to IndexedDB chunks",err)}
  }
  try{
-  const stream=zipEntryStream(file,e);
-  const info=await writeStreamToIDBChunksV4(t.id,stream,"audio/*");
+  const info=await writeZipStreamToIDBChunksV4(t.id,file,e,"audio/*");
   t.storage="idb-v4";t.size=info.size||size;t._blob=null;storageMode="idb-v4";
  }catch(err){
-  throw new Error("Could not save "+formatBytes(size)+" of preset audio. Browser storage is full or unavailable. Completed songs are kept.");
+  throw new Error(await storageWriteError("Could not save preset audio",size,err)+await storageEstimateText());
  }
 }
+
 async function loadAudio(t){
  if(t._blob&&t._blob.size)return t._blob;
  if(t.storage==="opfs-v4"||t.storage==="opfs"){

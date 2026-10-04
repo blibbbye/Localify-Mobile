@@ -81,7 +81,7 @@ public final class LocalifyPlaybackService extends Service {
             }
         });
         mediaSession.setActive(true);
-        updateNotification();
+        updateSession();
     }
 
     @Override

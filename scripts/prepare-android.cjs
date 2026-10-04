@@ -258,7 +258,7 @@ if(!manifest.includes("LocalifyPlaybackService")){
 fs.writeFileSync(manifestPath,manifest,"utf8");
 
 // Add the small JS bridge used by index.html for audio focus/background playback.
-if(!source.includes('"LocalioNative"')){
+if(!source.includes('"LocalifyNative"')){
   const imports=[
     "import android.content.Intent;",
     "import android.media.AudioAttributes;",
@@ -383,7 +383,7 @@ if(!source.includes('"LocalioNative"')){
                 abandonLocalifyAudioFocus();
                 stopService(new Intent(MainActivity.this, LocalifyPlaybackService.class));
             }
-        }, "LocalioNative");
+        }, "LocalifyNative");
     }
 
     @Override

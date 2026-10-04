@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-3">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-storage-fallback-4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -241,9 +241,14 @@ function storageWait(timeout=15000){
  if(storageInitPromise)return Promise.race([storageInitPromise.then(()=>storageReady),new Promise(resolve=>setTimeout(()=>resolve(storageReady),timeout))]);
  return Promise.resolve(false);
 }
+function storageBackendAvailable(){
+ return !!(db||rootDir||(()=>{
+   try{const k="__localify_storage_test__";localStorage.setItem(k,"1");localStorage.removeItem(k);return true}catch{return false}
+ })());
+}
 async function ensureStorageForAction(){
  const ok=await storageWait();
- if(!ok){toast("Localify is still preparing saved storage. Please try again in a moment.");throw new Error("Storage is not ready yet.");}
+ if(!ok && !storageBackendAvailable()){toast("Localify could not access device storage. Refresh the page and allow storage for this site.");throw new Error("No browser storage backend is available.");}
  return true;
 }
 async function persistRequest(){try{if(navigator.storage?.persist)await navigator.storage.persist()}catch{}}
@@ -724,16 +729,41 @@ async function saveProfile(){
  window.__pendingProfileAvatar=undefined;
  await saveMeta(true);closeModal();renderProfileButton();openProfile();
 }
+async function readMetaFromOPFS(){
+ try{
+  if(!rootDir)return null;
+  const fh=await rootDir.getFileHandle("localify-library.json",{create:false});
+  const f=await fh.getFile();
+  const text=await f.text();
+  return text?JSON.parse(text):null;
+ }catch{return null}
+}
+async function writeMetaToOPFS(meta){
+ if(!rootDir)throw new Error("OPFS unavailable.");
+ const fh=await rootDir.getFileHandle("localify-library.json",{create:true});
+ const w=await fh.createWritable();
+ try{await w.write(JSON.stringify(meta));await w.close()}catch(e){try{await w.abort()}catch{};throw e}
+}
 async function saveMeta(writeBackup=true){
  const meta=cloneMeta();
- if(!db)throw new Error("Localify storage is not ready.");
- await idbPut("meta","app",meta);
- if(writeBackup){try{localStorage.setItem(META_KEY,JSON.stringify(meta));localStorage.setItem(BACKUP_KEY,JSON.stringify(meta))}catch(e){console.warn("metadata backup unavailable",e)}}
+ let saved=false;
+ if(db){
+  try{await idbPut("meta","app",meta);saved=true}catch(err){console.warn("IndexedDB metadata save failed",err)}
+ }
+ if(rootDir){
+  try{await writeMetaToOPFS(meta);saved=true}catch(err){console.warn("OPFS metadata save failed",err)}
+ }
+ if(writeBackup){
+  try{localStorage.setItem(META_KEY,JSON.stringify(meta));localStorage.setItem(BACKUP_KEY,JSON.stringify(meta));saved=true}catch(e){console.warn("metadata localStorage backup unavailable",e)}
+ }
+ if(!saved)throw new Error("No writable storage backend is available.");
+ return true;
 }
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveMeta(true).catch(e=>console.warn("save failed",e)),650)}
 async function restore(){
  let meta=null,fromBackup=false;
- try{meta=await idbGet("meta","app")}catch{}
+ try{if(db)meta=await idbGet("meta","app")}catch{}
+ if(!meta)meta=await readMetaFromOPFS();
  if(!meta){
   try{meta=JSON.parse(localStorage.getItem(META_KEY)||"null");fromBackup=!!meta}catch{}
  }
@@ -742,12 +772,11 @@ async function restore(){
  }
  if(!meta)return false;
  state=Object.assign(state,meta);normalizeProfile();
- state.folders=Array.isArray(state.folders)?state.folders:[];
- state.folders.forEach(ensureFolderArrays);
+ state.folders=Array.isArray(state.folders)?state.folders:[];state.folders.forEach(ensureFolderArrays);
  state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},state.settings||{});
  normalizeStats();normalizeProfile();
  state.tracks=Array.isArray(state.tracks)?state.tracks:[];state.albums=Array.isArray(state.albums)?state.albums:[];state.artists=Array.isArray(state.artists)?state.artists:[];state.playlists=Array.isArray(state.playlists)?state.playlists:[];state.liked=Array.isArray(state.liked)?state.liked:[];state.recent=Array.isArray(state.recent)?state.recent:[];state.queue=Array.isArray(state.queue)?state.queue:[];state.currentId=state.currentId||null;state.detail=null;
- if(fromBackup)try{await idbPut("meta","app",cloneMeta())}catch{}
+ if(fromBackup)try{await saveMeta(false)}catch{}
  return true;
 }
 function ensureFolderArrays(f){if(!f)return;f.albumIds=Array.isArray(f.albumIds)?f.albumIds:[];f.trackIds=Array.isArray(f.trackIds)?f.trackIds:[];f.artistIds=Array.isArray(f.artistIds)?f.artistIds:[];f.playlistIds=Array.isArray(f.playlistIds)?f.playlistIds:[]}
@@ -1730,45 +1759,42 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
-  // Reset transient UI-operation state on every page load.
-  busy=false;operationController=null;saveTimer=0;
-  $("#busyShade").classList.remove("open");
-  try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
-  busyShow("Loading save","Loading your Localify library…");
-  busyUpdate("Loading save","Preparing local storage…",8);
-  storageInitPromise=(async()=>{
-   try{
-    await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))]);
-    await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
-    await loadExternalStorageHandle();
-    await persistRequest();
-
-  busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
-  normalizeStats();normalizeProfile();
-  if(!had)await saveMeta(true);
-  else{
-   try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}
+ busy=false;operationController=null;saveTimer=0;
+ $("#busyShade").classList.remove("open");
+ try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
+ busyShow("Loading save","Loading your Localify library…");busyUpdate("Loading save","Preparing device storage…",8);
+ storageInitPromise=(async()=>{
+  try{
+   try{await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))])}catch(e){console.warn("IndexedDB unavailable; continuing with other storage",e);db=null}
+   try{await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))])}catch(e){console.warn("OPFS unavailable",e);rootDir=null}
+   try{await loadExternalStorageHandle()}catch{}
+   await persistRequest();
+   busyUpdate("Loading save","Restoring your library…",55);
+   const had=await restore();
+   normalizeStats();normalizeProfile();
+   if(!had)try{await saveMeta(true)}catch(e){console.warn("initial metadata save failed",e)}
+   busyUpdate("Loading save","Finishing library setup…",88);
+   storageReady=storageBackendAvailable();
+   void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
+   if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
+   busyUpdate("Loading save",storageReady?"Ready.":"Storage needs permission in this browser.",100);
+   return had;
+  }catch(e){
+   console.error("storage boot",e);
+   storageReady=storageBackendAvailable();
+   return false;
   }
-  busyUpdate("Loading save","Finishing library setup…",88);storageReady=true;
-  void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
-  if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
-  busyUpdate("Loading save","Ready.",100);return had;
- }catch(e){
-  console.error("storage boot",e);
-  storageReady=false;
-  return false;
- }
  })();
  try{
-   const had=await storageInitPromise;
-   if(had)toast("Library restored.");
-   else if(storageReady)toast("Localify Mobile ready.");
-   else toast("Localify is running, but saved storage is unavailable.");
-   busyHide();
- }catch(e){console.error("boot storage",e)}
+  const had=await storageInitPromise;
+  if(had)toast("Library restored.");
+  else if(storageReady)toast("Localify Mobile ready.");
+  else toast("Localify is running. Browser storage permission is required to save or import audio.");
+  busyHide();
+ }catch(e){console.error("boot storage",e);busyHide()}
 }
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=20261004-hotfix5",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
+ navigator.serviceWorker.register("./sw.js?v=20261004-storagefix6",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
 }
 boot().then(()=>{setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},400)});
 })();

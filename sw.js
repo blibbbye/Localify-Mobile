@@ -1,4 +1,4 @@
-const CACHE="localify-mobile-v7";
+const CACHE="localify-mobile-v8";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
@@ -23,3 +23,5 @@ self.addEventListener("fetch",e=>{
     return r;
   })));
 });
+// Force an updated worker to take over immediately after a new deployment.
+self.addEventListener("message",e=>{if(e.data==="SKIP_WAITING")self.skipWaiting()});

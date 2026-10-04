@@ -179,6 +179,29 @@ function unlockMobileAudio(){
   if(p?.then)p.then(()=>{a.pause();mobileAudioUnlocked=true}).catch(()=>{});
  }catch{}
 }
+let localifyFocusResume=false,localifyFocusFadeToken=0;
+function fadeAudioVolume(target,duration=260){
+ const from=Math.max(0,Math.min(1,Number(audio.volume)||0)),to=Math.max(0,Math.min(1,Number(target)||0)),token=++localifyFocusFadeToken,start=performance.now();
+ function step(now){if(token!==localifyFocusFadeToken)return;const p=Math.min(1,(now-start)/duration);audio.volume=from+(to-from)*p;if(p<1)requestAnimationFrame(step)}
+ requestAnimationFrame(step);
+}
+window.__localifyAudioFocus=function(gained,transientFocus){
+ const target=Math.max(0,Math.min(1,Number(state.settings.volume??.9)));
+ if(!gained){
+  if(!state.currentId||audio.paused)return;
+  localifyFocusResume=!!transientFocus;
+  fadeAudioVolume(transientFocus?0.05:0,transientFocus?220:260);
+  if(!transientFocus)setTimeout(()=>{if(!localifyFocusResume&&state.currentId)audio.pause()},280);
+  return;
+ }
+ if(localifyFocusResume&&state.currentId){
+  localifyFocusResume=false;
+  audio.volume=0;
+  audio.play().catch(()=>{});
+  fadeAudioVolume(target,320);
+ }
+};
+
 function busyShow(title,text){busy=true;operationController=new AbortController();$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";const bar=$("#busyProgressBar");if(bar)bar.style.width="0%";$("#busyShade").classList.add("open")}
 function busyUpdate(title,text,pct){$("#busyTitle").textContent=title;$("#busyText").textContent=text;if(Number.isFinite(Number(pct))){const bar=$("#busyProgressBar");if(bar)bar.style.width=Math.max(0,Math.min(100,Number(pct)))+"%"}}
 function busyHide(){busy=false;operationController=null;const bar=$("#busyProgressBar");if(bar)bar.style.width="100%";setTimeout(()=>$("#busyShade").classList.remove("open"),120);}

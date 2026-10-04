@@ -74,11 +74,11 @@ jobs:
           retention-days: 30
 
       - name: Publish direct APK release
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: mobile-v${{ github.run_number }}
           name: Localify Mobile APK ${{ github.run_number }}
-          prerelease: true
+          prerelease: false
           generate_release_notes: false
           files: LocalifyMobile.apk

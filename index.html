@@ -1039,6 +1039,7 @@ async function boot(){
    else toast("Localify is running, but saved storage is unavailable.");
  }catch(e){console.error("boot storage",e)}
 }
+if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{})}
 boot();
 })();
 </script>

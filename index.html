@@ -715,7 +715,7 @@ function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,4);
  const albums=state.albums.slice(0,4),artists=state.artists.slice(0,4),playlists=state.playlists.slice(0,4),folders=state.folders.slice(0,4);
  $("#main").innerHTML=
- '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists and folders.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
+ '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Localify for mobile, expect bugs lol</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section">'+homeSectionHead("Recently played",recent.length,"recent",null,false)+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
  '<div class="section">'+homeSectionHead("Folders",state.folders.length,"folders","createFolder",true)+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use + to create one.</div>')+'</div>'+
  '<div class="section">'+homeSectionHead("Albums",state.albums.length,"albums","createAlbum",true)+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Tap + to create one.</div>')+'</div>'+
@@ -741,7 +741,7 @@ function renderSearch(){
  const playlists=q?state.playlists.filter(p=>(p.name||"").toLowerCase().includes(q)):state.playlists;
  const folders=q?state.folders.filter(f=>(f.name||"").toLowerCase().includes(q)):state.folders;
  const tabs=[["all","All"],["songs","Songs"],["albums","Albums"],["artists","Artists"],["playlists","Playlists"],["folders","Folders"]];
- let html='<div class="head"><div class="headText"><h1>Search</h1><p>'+ (q?(songs.length+" songs • "+albums.length+" albums • "+artists.length+" artists • "+playlists.length+" playlists • "+folders.length+" folders"):"Search your local catalog")+'</p></div></div><div class="toolbar">'+tabs.map(x=>'<button class="'+(filter===x[0]?"active":"")+'" data-search-filter="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>';
+ let html='<div class="head"><div class="headText"><h1>Search</h1><p>'+ (q?(songs.length+" songs • "+albums.length+" albums • "+artists.length+" artists • "+playlists.length+" playlists • "+folders.length+" folders"):"Search ur library")+'</p></div></div><div class="toolbar">'+tabs.map(x=>'<button class="'+(filter===x[0]?"active":"")+'" data-search-filter="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>';
  if(filter==="all"||filter==="songs")html+='<div class="section"><div class="sectionHead"><strong>Songs</strong><span>'+songs.length+'</span></div>'+(songs.length?'<div class="list">'+songs.slice(0,100).map(songRow).join("")+'</div>':'<div class="empty">No songs found</div>')+'</div>';
  if(filter==="all"||filter==="albums")html+='<div class="section"><div class="sectionHead"><strong>Albums</strong><span>'+albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.slice(0,60).map(albumCard).join("")+'</div>':'<div class="empty">No albums found</div>')+'</div>';
  if(filter==="all"||filter==="artists")html+='<div class="section"><div class="sectionHead"><strong>Artists</strong><span>'+artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.slice(0,60).map(artistCard).join("")+'</div>':'<div class="empty">No artists found</div>')+'</div>';
@@ -780,7 +780,7 @@ function renderPlaylists(){
  (shown.length?'<div class="grid">'+shown.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Tap + to create one.</div>');
 }
 function renderMore(){
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Import, export, storage and library management.</p></div></div>'+
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>More stuff</p></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Music</span></div><div class="morePanel"><button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="morePanel"><button class="btn danger" data-action="deleteLibrary">'+icon("trash")+'Delete library</button></div></div>';

@@ -15,7 +15,7 @@ on:
       - ".github/workflows/build-android.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -27,7 +27,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -36,7 +38,10 @@ jobs:
           java-version: "21"
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
+      - name: Validate Android preparation script
+        run: node --check scripts/prepare-android.cjs
 
       - name: Prepare web assets
         run: |
@@ -44,7 +49,7 @@ jobs:
           mkdir -p www
           cp index.html manifest.webmanifest sw.js icon.svg www/
 
-      - name: Add Android platform
+      - name: Add fresh Android platform
         run: npx cap add android
 
       - name: Sync web app
@@ -53,13 +58,27 @@ jobs:
       - name: Configure Android playback
         run: node scripts/prepare-android.cjs
 
-      - name: Build debug APK
+      - name: Build installable debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
 
-      - name: Upload APK
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk LocalifyMobile.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: localify-mobile-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: LocalifyMobile-apk
+          path: LocalifyMobile.apk
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct APK release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-v${{ github.run_number }}
+          name: Localify Mobile APK ${{ github.run_number }}
+          prerelease: true
+          generate_release_notes: false
+          files: LocalifyMobile.apk

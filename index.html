@@ -997,24 +997,65 @@ function showDetail(type,id){
   bindCovers();
  }
 }
-async function playTrack(id){
+function playbackContextTracks(){
+ if(state.view==="folder"&&state.detail){
+  const f=folderById(state.detail);
+  if(f)return folderItems(f,"songs");
+ }
+ const d=state.detail;
+ if(d?.type==="album")return sortTracks(tracksForAlbum(d.id));
+ if(d?.type==="artist")return tracksForArtist(d.id);
+ if(d?.type==="playlist")return tracksForPlaylist(state.playlists.find(p=>p.id===d.id));
+ if(state.view==="recent")return state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean);
+ if(state.view==="search"){
+  const q=String(state.search||"").trim().toLowerCase();
+  if(q)return state.tracks.filter(t=>(trackTitle(t)+" "+artistText(t)+" "+albumName(t)).toLowerCase().includes(q));
+ }
+ return state.tracks;
+}
+function buildQueueForTrack(id){
+ const list=playbackContextTracks().filter(Boolean);
+ let ids=list.length?list.map(t=>t.id):state.tracks.map(t=>t.id);
+ if(!ids.includes(id))ids=[id,...ids.filter(x=>x!==id)];
+ if(state.settings.shuffle)ids=shuffle(ids);
+ return ids;
+}
+async function playTrack(id,preserveQueue=false){
  if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{}
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
  try{if(!storageReady)await storageWait(20000)}catch{}
  recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
+ if(!preserveQueue){
+  state.queue=buildQueueForTrack(id);
+  state.queueIndex=Math.max(0,state.queue.indexOf(id));
+ }else{
+  state.queue=Array.isArray(state.queue)?state.queue.filter(x=>state.tracks.some(y=>y.id===x)):[];
+  if(!state.queue.length){state.queue=buildQueueForTrack(id);state.queueIndex=state.queue.indexOf(id)}
+  else if(!state.queue.includes(id)){state.queue.push(id);state.queueIndex=state.queue.length-1}
+ }
  currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
- state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));if(!state.queue.includes(id))state.queue.push(id);state.queueIndex=state.queue.indexOf(id);
+ state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);
  audio.volume=state.settings.volume??.9;updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
- try{await audio.play();recordPlay(t);if(state.detail?.type==="folder")showFolder(state.detail.id);else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);else render()}catch(e){toast("Press play again to start audio.");}
+ try{await audio.play();recordPlay(t);if(state.view==="folder"&&state.detail)showFolder(state.detail);else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);else render()}catch(e){toast("Press play again to start audio.");}
 }
-function queuePlay(id){const t=state.tracks.find(x=>x.id===id);if(!t)return;state.queue=[id,...state.queue.filter(x=>x!==id)];state.queueIndex=0;playTrack(id)}
+function queuePlay(id){const t=state.tracks.find(x=>x.id===id);if(!t)return;state.queue=[id,...state.queue.filter(x=>x!==id)];state.queueIndex=0;playTrack(id,true)}
 function playList(ts,start){
  const list=ts.filter(Boolean);if(!list.length)return;
  const order=state.settings.shuffle?shuffle(list.map(x=>x.id)):list.map(x=>x.id);
- state.queue=order;state.queueIndex=Math.min(Math.max(0,start||0),order.length-1);playTrack(state.queue[state.queueIndex]);
+ state.queue=order;state.queueIndex=Math.min(Math.max(0,start||0),order.length-1);playTrack(state.queue[state.queueIndex],true);
 }
 function shuffle(a){const out=[...a];for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
+function toggleShuffle(){
+ state.settings.shuffle=!state.settings.shuffle;
+ const current=state.currentId,ids=playbackContextTracks().map(t=>t.id).filter(Boolean);
+ if(ids.length){
+  let order=state.settings.shuffle?shuffle(ids):ids;
+  if(current&&order.includes(current)){const i=order.indexOf(current);[order[0],order[i]]=[order[i],order[0]]}
+  state.queue=order;state.queueIndex=current?Math.max(0,order.indexOf(current)):0;
+ }
+ scheduleSave();
+}
 function ensurePlayerQueue(){
  if(!state.tracks.length)return false;
  state.queue=Array.isArray(state.queue)?state.queue.filter(id=>state.tracks.some(t=>t.id===id)):[];
@@ -1419,7 +1460,7 @@ function bindEvents(){
   if(a==="playerControls"){openPlayerControls();return}
   if(a==="playerLyrics"){closeSheet();openCurrentLyrics();return}
   if(a==="playerEffects"){openPlayerEffects();return}
-  if(a==="playerShuffle"){state.settings.shuffle=!state.settings.shuffle;scheduleSave();openPlayerControls();return}
+  if(a==="playerShuffle"){toggleShuffle();openPlayerControls();renderPlayer();return}
   if(a==="playerRepeat"){state.settings.repeat=state.settings.repeat==="off"?"all":state.settings.repeat==="all"?"one":"off";scheduleSave();openPlayerControls();return}
   if(a==="setFx"){setAudioFx(b.dataset.fx);closeModal();return}
     if(a==="homeCreateMenu"){homeCreateMenu();return}

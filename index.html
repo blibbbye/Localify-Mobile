@@ -62,7 +62,7 @@ main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px
 .hero{padding:18px;border:1px solid #27313b;border-radius:18px;background:linear-gradient(145deg,#171e25,#0f1419);margin-bottom:18px}
 .heroKicker{font-size:9px;font-weight:950;letter-spacing:.12em;color:#72808d}.hero h2{margin:8px 0;font-size:37px;line-height:1.02;letter-spacing:-2px}.hero p{margin:0;color:#9aa5b1;font-size:12px;line-height:1.55}
 .actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}.actions .btn{flex:1 1 145px}
-.section{margin-top:20px}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.sectionHead strong{font-size:17px}.sectionHead span{font-size:10px;color:#768391}
+.section{margin-top:20px}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.sectionHead strong{font-size:17px}.sectionHead span{font-size:10px;color:#768391}.homeSectionActions{display:flex;align-items:center;gap:6px}.homeMore{background:transparent;color:#7f8c99;font-size:11px;font-weight:850;padding:5px 4px;border-radius:8px}.homeMore:hover{color:#fff;background:#171d23}.homeSectionActions .btn.small{min-height:30px;width:30px;padding:0;border-radius:9px}.homeSectionActions .btn.small .i{width:16px;height:16px}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .card{padding:8px;min-width:0;border:1px solid #202830;background:#11161b;border-radius:15px;overflow:hidden}.art{aspect-ratio:1;border-radius:11px;overflow:hidden;background:#202832;display:grid;place-items:center}.art img{width:100%;height:100%;object-fit:cover}.art .i{width:42px;height:42px;color:#64717f}.round .art{border-radius:50%}
 .title{margin-top:8px;font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub{margin-top:3px;font-size:10px;color:#7e8996;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -562,7 +562,7 @@ function renderHome(){
  const albums=state.albums.slice(0,4),artists=state.artists.slice(0,4),playlists=state.playlists.slice(0,4),folders=state.folders.slice(0,4);
  $("#main").innerHTML=
  '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists and folders.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
- '<div class="section">'+homeSectionHead("Recently played",recent.length,"library",null,false)+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
+ '<div class="section">'+homeSectionHead("Recently played",recent.length,"recent",null,false)+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
  '<div class="section">'+homeSectionHead("Folders",state.folders.length,"folders","createFolder",true)+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use + to create one.</div>')+'</div>'+
  '<div class="section">'+homeSectionHead("Albums",state.albums.length,"albums","createAlbum",true)+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Tap + to create one.</div>')+'</div>'+
  '<div class="section">'+homeSectionHead("Artists",state.artists.length,"artists","createArtist",true)+(artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Tap + to create one.</div>')+'</div>'+
@@ -597,6 +597,12 @@ function renderSearch(){
  $$('[data-search-filter]').forEach(b=>b.onclick=()=>{state.searchFilter=b.dataset.searchFilter;renderSearch()});
  bindCovers();
 }
+function renderRecently(){
+ const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean);
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Recently played</h1><p>'+recent.length+' recently played songs</p></div></div>'+
+ (recent.length?'<div class="list">'+recent.map(songRow).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>');
+ bindCovers();
+}
 function renderLibrary(){
  const ts=sortTracks(state.tracks);
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Your Library</h1><p>'+ts.length+' songs • '+state.albums.length+' albums</p></div><button type="button" class="btn primary icon" data-action="addSongs" aria-label="Add songs">'+icon("plus")+'</button></div>'+
@@ -629,7 +635,7 @@ function renderMore(){
 function render(){
  renderProfileButton();
  $("#nav").innerHTML=navHtml();
- if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else if(state.view==="folders")renderFolders();else if(state.view==="folder"&&state.detail)showFolder(state.detail);else renderMore();
+ if(state.view==="home")renderHome();else if(state.view==="search")renderSearch();else if(state.view==="recent")renderRecently();else if(state.view==="library")renderLibrary();else if(state.view==="albums")renderAlbums();else if(state.view==="artists")renderArtists();else if(state.view==="playlists")renderPlaylists();else if(state.view==="folders")renderFolders();else if(state.view==="folder"&&state.detail)showFolder(state.detail);else renderMore();
  renderPlayer();
 }
 function renderFolders(){

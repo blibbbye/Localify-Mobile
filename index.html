@@ -97,7 +97,7 @@ main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px
  .nav button span{white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis}
 }
 #main{touch-action:pan-y;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}html,body{touch-action:pan-y}.playerControls{min-width:0}.playerMoreBtn{display:inline-grid!important}.playerControlGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.playerControlGrid .sheetItem{justify-content:flex-start}.playerControlNow{padding:11px 12px;border:1px solid #26313b;border-radius:12px;background:#12181d;margin-bottom:8px}.playerControlNow strong,.playerControlNow span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.playerControlNow span{font-size:10px;color:#7f8b96;margin-top:3px}.playerVolume{padding:12px;border:1px solid #26313b;border-radius:12px;background:#12181d;margin-top:8px}.playerVolumeHead{display:flex;justify-content:space-between;gap:10px;font-size:11px}.playerVolumeHead span{color:#8b98a5}.playerVolume input{width:100%;accent-color:var(--accent);margin-top:9px}.controlBadge{min-width:34px;height:22px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;background:#1f2931;border:1px solid #31404d;font-size:9px;font-weight:900;color:#9daab5}.playerFxGrid{display:grid;gap:7px}.playerFxGrid .sheetItem{justify-content:flex-start}.playerFxGrid .sheetItem span{display:grid;gap:2px;text-align:left}.playerFxGrid .sheetItem small{font-size:9px;color:#7b8793}.playerFxGrid .sheetItem.selected{border-color:#385466;background:rgba(125,211,252,.08);color:var(--accent)}.lyricsMobile{font-size:13px;line-height:1.75;color:#dfe6ec;white-space:normal;padding:12px;border:1px solid #27323c;border-radius:14px;background:#10161b;min-height:90px}.folderCollage{aspect-ratio:1;border-radius:11px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;background:#1a222a;gap:2px}.folderTile{min-width:0;min-height:0;background:#202a33;display:grid;place-items:center;color:#64717f;overflow:hidden}.folderTile img{width:100%;height:100%;object-fit:cover;display:block}.folderTile .i{width:35%;height:35%}.folderTile.emptyTile{opacity:.55}.folderCollage>div:not(.folderTile){grid-column:1/3;grid-row:1/3;display:grid;place-items:center;color:#697582}.folderCollage>div:not(.folderTile) .i{width:42px;height:42px}.folderPickerList{display:grid;gap:6px;max-height:55dvh;overflow:auto;margin-top:10px}.folderPickRow{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #26313b;border-radius:11px;background:#11171c;cursor:pointer}.folderPickRow:has(input:checked){border-color:#3b5666;background:rgba(125,211,252,.07)}.folderPickRow input{width:18px;height:18px;accent-color:var(--accent);flex:none}.folderPickRow span{min-width:0}.folderPickRow strong,.folderPickRow small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.folderPickRow strong{font-size:11px}.folderPickRow small{margin-top:2px;color:#788592;font-size:9px}.folderCard{cursor:pointer}.folderCard:hover{border-color:#33414e;background:#151c22}
-</style>
+</style><style id="shareMobileStyles">.shareMHead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.shareMHead h2{margin:0;font-size:21px}.shareMHead p{margin:4px 0 0;color:#7f8a96;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68vw}.shareMStats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0}.shareMStats div{padding:8px 4px;border:1px solid #26303a;border-radius:9px;background:#11171d;text-align:center}.shareMStats b{display:block;font-size:15px}.shareMStats span{display:block;color:#73808c;font-size:7px;text-transform:uppercase}.shareMLink{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}.shareMLink input{min-width:0;background:#0d1217;border:1px solid #29333d;border-radius:10px;padding:9px;color:#aab5bf;font-size:9px}.shareMTabs{display:flex;gap:6px;overflow:auto;padding:10px 0 8px}.shareMList{max-height:45vh;overflow:auto;border:1px solid #242d36;border-radius:12px;padding:5px}.shareMRow{display:grid;grid-template-columns:38px minmax(0,1fr);gap:9px;align-items:center;padding:7px;border-radius:9px}.shareMRow:hover{background:#151b21}.shareMArt{width:38px;height:38px;border-radius:8px;background:#172028;display:grid;place-items:center;color:#6e7c89;overflow:hidden}.shareMArt img{width:100%;height:100%;object-fit:cover}.shareMRow strong{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shareMRow span{display:block;margin-top:2px;color:#75818d;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shareMFoot{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}@media(max-width:380px){.shareMStats{grid-template-columns:repeat(3,1fr)}.shareMLink{grid-template-columns:1fr}.shareMFoot{grid-template-columns:1fr}}</style>
 </head>
 <body>
 <div class="app">
@@ -941,34 +941,34 @@ function openSheet(html){
  $("#sheetShade").classList.add("open");
 }
 function closeSheet(){$("#sheetShade").classList.remove("open")}
-function buildPresetSharePayload(){
- const folders=Array.isArray(state.folders)?state.folders:[];
- const artistText=a=>String(a?.name||"Unknown Artist");
- const songText=t=>String(t?.title||t?.fileName||"Untitled song");
- return {version:1,name:"Localify Preset",createdAt:new Date().toISOString(),totalTracks:state.tracks.length,
-  counts:{albums:state.albums.length,artists:state.artists.length,songs:state.tracks.length,folders:folders.length},
-  albums:state.albums.slice(0,4).map(a=>({title:String(a?.title||"Untitled album"),artist:Array.isArray(a?.artistNames)?a.artistNames.join(", "):String(a?.artist||"Unknown Artist")})),
-  artists:state.artists.slice(0,4).map(artistText).map(name=>({name})),
-  songs:state.tracks.slice(0,4).map(t=>({title:songText(t),artist:String(t?.artist||"Unknown Artist")})),
-  folders:folders.slice(0,4).map(f=>({name:String(f?.name||"Untitled folder"),extra:((f?.albumIds||[]).length+(f?.trackIds||[]).length)+" items"}))};
+function publicShareCover(v){const s=typeof v==="string"?v:"";return /^(https?:\/\/)/i.test(s)?s:""}
+function buildPresetSharePayload(source=null){
+ const x=source||state,artists=Array.isArray(x.artists)?x.artists:[],albums=Array.isArray(x.albums)?x.albums:[],tracks=Array.isArray(x.tracks)?x.tracks:[],folders=Array.isArray(x.folders)?x.folders:[],playlists=Array.isArray(x.playlists)?x.playlists:[];
+ const artistNameFor=a=>String(a?.name||a?.title||"Unknown Artist"),albumArtists=a=>Array.isArray(a?.artistNames)?a.artistNames.join(", "):String(a?.artist||"Unknown Artist");
+ return {v:2,n:String(x.presetName||x.name||"Localify Library"),x:String(x.exportedAt||x.createdAt||new Date().toISOString()),c:{albums:albums.length,artists:artists.length,songs:tracks.length,folders:folders.length,playlists:playlists.length},
+  a:albums.slice(0,12).map(a=>({t:String(a?.title||"Untitled album"),a:albumArtists(a),k:publicShareCover(a?.cover),y:String(a?.year||"")})),
+  r:artists.slice(0,12).map(a=>({n:artistNameFor(a),k:publicShareCover(a?.image||a?.picture||a?.avatar),g:Array.isArray(a?.genres)?a.genres.slice(0,2).join(", "):String(a?.genre||"")})),
+  s:tracks.slice(0,24).map(t=>({t:String(t?.title||t?.fileName||"Untitled song"),a:String(t?.artist||"Unknown Artist"),k:publicShareCover(t?.cover),n:String(t?.trackNumber||t?.track||"")})),
+  f:folders.slice(0,12).map(f=>({n:String(f?.name||"Untitled folder"),i:((f?.albumIds||[]).length+(f?.trackIds||[]).length+(f?.artistIds||[]).length+(f?.playlistIds||[]).length)})),
+  p:playlists.slice(0,12).map(p=>({n:String(p?.name||"Untitled playlist"),i:Array.isArray(p?.trackIds)?p.trackIds.length:0}))};
 }
-function presetShareUrl(){
- const bytes=new TextEncoder().encode(JSON.stringify(buildPresetSharePayload()));
- let bin="";for(let i=0;i<bytes.length;i+=0x8000)bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
- const data=btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
- return new URL("share.html",location.href).href+"#"+data;
+async function presetShareUrl(source=null){
+ const bytes=new TextEncoder().encode(JSON.stringify(buildPresetSharePayload(source)));let out=bytes;
+ try{if("CompressionStream"in window){const cs=new CompressionStream("gzip"),stream=new Blob([bytes]).stream().pipeThrough(cs);out=new Uint8Array(await new Response(stream).arrayBuffer())}}catch{}
+ let bin="";for(let i=0;i<out.length;i+=0x8000)bin+=String.fromCharCode(...out.subarray(i,i+0x8000));
+ return new URL("share.html",location.href).href+"#"+btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
-async function sharePresetPreview(){
- const url=presetShareUrl();
- try{
-  if(navigator.share)await navigator.share({title:"Localify Preset Preview",text:"Preview this Localify preset",url});
-  else await navigator.clipboard.writeText(url);
-  toast("Preset preview link copied/shared.");
- }catch(e){
-  if(e?.name==="AbortError")return;
-  try{await navigator.clipboard.writeText(url);toast("Preset preview link copied.");}catch{prompt("Copy this Localify preview link:",url);}
- }
+async function openMobileShareMenu(source=null){
+ const d=buildPresetSharePayload(source),url=await presetShareUrl(source),tabs=[["overview","Overview"],["albums","Albums"],["artists","Artists"],["songs","Songs"],["folders","Folders"],["playlists","Playlists"]];
+ const rows={albums:d.a,artists:d.r,songs:d.s,folders:d.f,playlists:d.p};
+ const makeRows=k=>rows[k].map(x=>'<div class="shareMRow"><div class="shareMArt">'+(x.k?'<img src="'+esc(x.k)+'" alt="">':'♫')+'</div><div><strong>'+esc(x.t||x.n||"Untitled")+'</strong><span>'+esc(x.a||x.g||((x.i??"")+" items"))+'</span></div></div>').join("")||'<div class="empty">Nothing in this category.</div>';
+ openSheet('<div class="shareMHead"><div><h2>Share preset</h2><p>'+esc(d.n)+'</p></div><button class="btn small" data-action="closeSheet">Close</button></div><div class="shareMStats">'+Object.entries(d.c).slice(0,5).map(([k,v])=>'<div><b>'+Number(v||0).toLocaleString()+'</b><span>'+esc(k)+'</span></div>').join("")+'</div><div class="shareMLink"><input id="mobileShareLink" readonly value="'+esc(url)+'"><button class="btn primary" data-action="copyMobileShare">Copy</button></div><div class="shareMTabs">'+tabs.map(t=>'<button class="btn small '+(t[0]==="overview"?"primary":"")+'" data-mobile-share-tab="'+t[0]+'">'+t[1]+'</button>').join("")+'</div><div id="mobileShareList" class="shareMList"></div><div class="shareMFoot"><button class="btn" data-action="openMobileShare">Open preview</button><button class="btn primary" data-action="nativeMobileShare">Share</button></div>');
+ const renderTab=tab=>{$("#mobileShareList").innerHTML=tab==="overview"?'<div class="empty"><strong>'+Number(d.c.albums||0).toLocaleString()+' albums</strong> • '+Number(d.c.songs||0).toLocaleString()+' songs<br><br>Choose a category above to browse the preview.</div>':makeRows(tab)};
+ renderTab("overview");
+ qAll("[data-mobile-share-tab]").forEach(b=>b.onclick=()=>{qAll("[data-mobile-share-tab]").forEach(x=>x.classList.remove("primary"));b.classList.add("primary");renderTab(b.dataset.mobileShareTab)});
+ qAll("#sheet [data-action]").forEach(b=>b.onclick=async()=>{const a=b.dataset.action;if(a==="closeSheet")closeSheet();if(a==="copyMobileShare"){try{await navigator.clipboard.writeText(url);toast("Share link copied.")}catch{prompt("Copy this Localify share link:",url)}}if(a==="openMobileShare")window.open(url,"_blank","noopener");if(a==="nativeMobileShare"){try{if(navigator.share)await navigator.share({title:d.n,text:"Localify library preview",url});else await navigator.clipboard.writeText(url);toast("Share link ready.")}catch(e){if(e?.name!=="AbortError")toast("Could not share the link.")}}});
 }
+async function sharePresetPreview(){await openMobileShareMenu(null)}
 function openLibraryTools(){
  openSheet('<h2>Library Tools</h2>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Add music</span></div><div class="sheetGrid"><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button></div></div>'+
@@ -1509,7 +1509,7 @@ async function exportPreset(){
   let offset=0,parts=[],central=[];
   for(const f of files){busyCheck();busyUpdate("Creating preset",Math.min(files.indexOf(f)+1,files.length)+" / "+files.length+" entries");const crc=crc32(f.bytes),h=zipLocal(f.name,crc,f.bytes.length),o=offset;parts.push(h,f.bytes);central.push(zipCentral(f.name,crc,f.bytes.length,o));offset+=h.length+f.bytes.length}
   const cdOff=offset,cd=join(central);parts.push(cd);parts.push(eocdZip(central.length,cd.length,cdOff));
-  const blob=new Blob(parts,{type:"application/octet-stream"});downloadBlob(blob,"Localify-Mobile.localify");busyHide();toast("Preset exported.");
+  const blob=new Blob(parts,{type:"application/octet-stream"});downloadBlob(blob,"Localify-Mobile.localify");busyHide();toast("Preset exported.");await openMobileShareMenu(manifest);
  }catch(e){if(e?.name==="AbortError")toast("Preset export cancelled.");else{console.error(e);toast(e?.message||"Could not export preset.");}}finally{busyHide()}
 }
 function join(parts){const n=parts.reduce((s,x)=>s+x.length,0),out=new Uint8Array(n);let o=0;for(const p of parts){out.set(p,o);o+=p.length}return out}

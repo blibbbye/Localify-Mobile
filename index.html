@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-storage-fallback-4">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-import-fix-1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1378,36 +1378,79 @@ function sanitizeManifest(p){
  if(!p||typeof p!=="object")throw new Error("Invalid Localify preset.");
  p.tracks=Array.isArray(p.tracks)?p.tracks:[];p.artists=Array.isArray(p.artists)?p.artists:[];p.albums=Array.isArray(p.albums)?p.albums:[];p.playlists=Array.isArray(p.playlists)?p.playlists:[];p.folders=Array.isArray(p.folders)?p.folders:[];p.liked=Array.isArray(p.liked)?p.liked:[];p.recent=Array.isArray(p.recent)?p.recent:[];return p;
 }
-function u16(d,o){if(d instanceof DataView)return d.getUint16(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true);throw new TypeError("Invalid binary view")}function u32(d,o){if(d instanceof DataView)return d.getUint32(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true);throw new TypeError("Invalid binary view")}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
+function u16(d,o){return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true)}
+function u32(d,o){return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true)}
 function read64(bytes,o){const d=new DataView(bytes.buffer,bytes.byteOffset+o,8);return d.getUint32(0,true)+d.getUint32(4,true)*4294967296}
-async function readZipIndex(file){
- const tailSize=Math.min(file.size,1024*1024),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer());
- let eocd=-1;for(let i=tail.length-22;i>=0;i--)if(tail[i]===0x50&&tail[i+1]===0x4b&&tail[i+2]===0x05&&tail[i+3]===0x06){eocd=i;break}
- if(eocd<0)throw new Error("This file is not a ZIP Localify preset.");
- const ed=new DataView(tail.buffer,tail.byteOffset+eocd,22),entries=u16(ed,10),cdSize=u32(ed,12),cdOff=u32(ed,16);
- let realEntries=entries,realSize=cdSize,realOff=cdOff;
- if(entries===65535||cdSize===0xffffffff||cdOff===0xffffffff){
-  const locPos=file.size-tailSize+eocd-20;const loc=new DataView(await file.slice(locPos,locPos+20).arrayBuffer());const zip64Off=read64(new Uint8Array(await file.slice(locPos+8,locPos+16).arrayBuffer()),0);
-  const head=new Uint8Array(await file.slice(zip64Off,zip64Off+56).arrayBuffer());const z=new DataView(head.buffer);realEntries=Number(read64(head,32));realSize=read64(head,40);realOff=read64(head,48);
+function zip64Value(extra,which){
+ let pos=0;
+ while(pos+4<=extra.length){
+  const id=u16(extra,pos),len=u16(extra,pos+2),start=pos+4,end=start+len;
+  if(end>extra.length)break;
+  if(id===1){
+   let q=start;
+   for(const key of ["usize","csize","offset"]){
+    if(q+8>end)break;
+    if(key===which)return read64(extra,q);
+    q+=8;
+   }
+  }
+  pos=end;
  }
- const cd=new Uint8Array(await file.slice(realOff,realOff+realSize).arrayBuffer()),out=new Map();let p=0,count=0;
- while(p+46<=cd.length&&count<realEntries){
-  if(u32(new DataView(cd.buffer,cd.byteOffset+p,4),0)!==0x02014b50)break;
-  const dv=new DataView(cd.buffer,cd.byteOffset+p,46),method=u16(dv,10),cs=u32(dv,20),us=u32(dv,24),nl=u16(dv,28),el=u16(dv,30),cl=u16(dv,32),off=u32(dv,42);
-  const name=new TextDecoder().decode(cd.slice(p+46,p+46+nl)),extra=cd.slice(p+46+nl,p+46+nl+el);
-  const entry={name,method,compSize:cs,uncompSize:us,offset:off};
-  if(us===0xffffffff)entry.uncompSize=zip64(extra,"uncomp")??0;if(cs===0xffffffff)entry.compSize=zip64(extra,"comp")??0;if(off===0xffffffff)entry.offset=zip64(extra,"offset")??0;
-  out.set(name,entry);p+=46+nl+el+cl;count++;
+ return null;
+}
+async function readZipIndex(file){
+ if(!file||typeof file.size!=="number")throw new Error("Invalid preset file.");
+ const tailSize=Math.min(file.size,65557),tailStart=file.size-tailSize;
+ const tail=new Uint8Array(await file.slice(tailStart).arrayBuffer());
+ let eocd=-1;
+ for(let i=tail.length-22;i>=0;i--)if(tail[i]===0x50&&tail[i+1]===0x4b&&tail[i+2]===0x05&&tail[i+3]===0x06){eocd=i;break}
+ if(eocd<0)throw new Error("This file is not a ZIP Localify preset.");
+ const ev=new DataView(tail.buffer,tail.byteOffset+eocd,22);
+ let count=ev.getUint16(10,true),cdSize=ev.getUint32(12,true),cdOffset=ev.getUint32(16,true);
+ if(count===0xffff||cdSize===0xffffffff||cdOffset===0xffffffff){
+  const locAbs=tailStart+eocd-20;
+  if(locAbs<0)throw new Error("Invalid ZIP64 archive.");
+  const locBuf=new Uint8Array(await file.slice(locAbs,locAbs+20).arrayBuffer());
+  if(locBuf.length<20||u32(locBuf,0)!==0x07064b50)throw new Error("Invalid ZIP64 archive.");
+  const zip64Offset=read64(locBuf,8);
+  const zBuf=new Uint8Array(await file.slice(zip64Offset,zip64Offset+56).arrayBuffer());
+  if(zBuf.length<56||u32(zBuf,0)!==0x06064b50)throw new Error("Invalid ZIP64 archive.");
+  count=read64(zBuf,32);cdSize=read64(zBuf,40);cdOffset=read64(zBuf,48);
+ }
+ if(count<0||cdSize<0||cdOffset<0||cdOffset+cdSize>file.size)throw new Error("Invalid ZIP directory.");
+ const central=new Uint8Array(await file.slice(cdOffset,cdOffset+cdSize).arrayBuffer());
+ const out=new Map(),dec=new TextDecoder();let pos=0;
+ for(let i=0;i<count;i++){
+  if(pos+46>central.length||u32(central,pos)!==0x02014b50)throw new Error("Invalid Localify ZIP entry.");
+  const dv=new DataView(central.buffer,central.byteOffset+pos,46);
+  const method=dv.getUint16(10,true),crc=dv.getUint32(16,true),c32=dv.getUint32(20,true),u32v=dv.getUint32(24,true),nameLen=dv.getUint16(28,true),extraLen=dv.getUint16(30,true),commentLen=dv.getUint16(32,true),off32=dv.getUint32(42,true);
+  const recordEnd=pos+46+nameLen+extraLen+commentLen;
+  if(recordEnd>central.length)throw new Error("Invalid Localify ZIP entry.");
+  const name=dec.decode(central.slice(pos+46,pos+46+nameLen)),extra=central.slice(pos+46+nameLen,pos+46+nameLen+extraLen);
+  const usize=u32v===0xffffffff?zip64Value(extra,"usize"):u32v;
+  const csize=c32===0xffffffff?zip64Value(extra,"csize"):c32;
+  const localOffset=off32===0xffffffff?zip64Value(extra,"offset"):off32;
+  if(usize==null||csize==null||localOffset==null)throw new Error("Invalid ZIP64 entry.");
+  const lh=new Uint8Array(await file.slice(localOffset,localOffset+30).arrayBuffer());
+  if(lh.length<30||u32(lh,0)!==0x04034b50)throw new Error("Invalid Localify audio entry.");
+  const lhdv=new DataView(lh.buffer,lh.byteOffset,30),ln=lhdv.getUint16(26,true),le=lhdv.getUint16(28,true),dataStart=localOffset+30+ln+le;
+  if(dataStart<0||dataStart+csize>file.size)throw new Error("Corrupt Localify entry: "+name);
+  if(out.has(name))throw new Error("Corrupt Localify archive: duplicate entry "+name);
+  out.set(name,{name,method,crc:crc>>>0,compSize:csize,uncompSize:usize,offset:localOffset,dataStart});
+  pos=recordEnd;
  }
  return out;
 }
 async function zipEntryBlob(file,e){
- const head=new DataView(await file.slice(e.offset,e.offset+30).arrayBuffer());
- if(head.getUint32(0,true)!==0x04034b50)throw new Error("A preset audio entry is damaged.");
- const nl=head.getUint16(26,true),el=head.getUint16(28,true),start=e.offset+30+nl+el,raw=file.slice(start,start+e.compSize);
- if(e.method===0)return raw;
- if(e.method===8&&typeof DecompressionStream!=="undefined"){
-  try{return await new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob()}catch(err){throw new Error("Could not decompress one of the preset audio files.") }
+ if(!e)throw new Error("Missing Localify archive entry.");
+ const raw=file.slice(e.dataStart,e.dataStart+e.compSize);
+ if(e.method===0){if(raw.size!==e.compSize)throw new Error("Corrupt Localify archive: size mismatch.");return raw}
+ if(e.method===8&&"DecompressionStream" in window){
+  try{
+   const blob=await new Response(raw.stream().pipeThrough(new DecompressionStream("deflate-raw"))).blob();
+   if(e.uncompSize&&blob.size!==e.uncompSize)throw new Error("size mismatch");
+   return blob;
+  }catch(err){throw new Error("Could not decompress this Localify preset audio file.") }
  }
  throw new Error("This preset uses a ZIP compression method that Localify Mobile cannot read in this browser.");
 }

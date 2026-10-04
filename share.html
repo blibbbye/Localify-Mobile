@@ -35,7 +35,7 @@ button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:22px 16px 5
 <script>
 (async()=>{
  const $=s=>document.querySelector(s);
- const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",""":"&quot;","'":"&#39;"}[m]));
+ const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
  const b64u=s=>s.replace(/-/g,"+").replace(/_/g,"/");
  async function gunzip(bytes){if(!("DecompressionStream"in window))return null;const ds=new DecompressionStream("gzip"),stream=new Blob([bytes]).stream().pipeThrough(ds),buf=await new Response(stream).arrayBuffer();return new Uint8Array(buf)}
  async function decode(){

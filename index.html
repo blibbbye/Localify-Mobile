@@ -1253,7 +1253,7 @@ function choosePresetImportMode(){
 async function importPreset(file){
  if(!file)return;
  busyShow("Importing preset","Preparing "+((Number(file.size)||0)/1073741824).toFixed(2)+" GB preset…");
- let importMode="add",importedTrackIds=[],importedArtistIds=[],importedAlbumIds=[],importedPlaylistIds=[],importedFolderIds=[];
+ let importMode="add",importedTrackIds=[],importedArtistIds=[],importedAlbumIds=[],importedPlaylistIds=[],importedFolderIds=[],previousMeta=null,previousTracks=null;
  try{
   await ensureStorageForAction();
   await persistRequest();
@@ -1278,8 +1278,8 @@ async function importPreset(file){
    if(!importMode){toast("Preset import cancelled.");return}
    busyShow("Importing preset","Starting…");busyUpdate("Importing preset","Preparing "+manifest.tracks.length+" songs…",2);
    if(importMode==="set"){
+    previousMeta=cloneMeta();previousTracks=[...state.tracks];
     audio.pause();currentBlob=null;if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl=""}audio.removeAttribute("src");state.currentId=null;state.queue=[];state.queueIndex=0;
-    for(const oldTrack of [...state.tracks]){busyCheck();await removeAudio(oldTrack)}
     state.tracks=[];state.albums=[];state.artists=[];state.playlists=[];state.folders=[];state.liked=[];state.recent=[];
     if(manifest.settings)state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},JSON.parse(JSON.stringify(manifest.settings)));
    }
@@ -1350,14 +1350,20 @@ async function importPreset(file){
   });
   if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id))])];
   if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id)),...state.recent])].slice(0,100);
+  if(importMode==="set"&&previousTracks){busyUpdate("Importing preset","Replacing the old library files…",97);for(const oldTrack of previousTracks){try{await removeAudio(oldTrack)}catch(err){console.warn("Old audio cleanup failed",err)}}}
   await saveMeta(true);busyUpdate("Importing preset","Finished. Updating your library…",100);render();toast("Preset imported successfully.");
  }catch(e){
   console.error("Localify Mobile preset import failed",e);
-  if(e?.name==="AbortError")toast("Preset import cancelled.");
-  else{
-   // Keep every song that was successfully written before the failure.
-   // This is important for large presets: a late storage/ZIP error must not
-   // force the browser to delete gigabytes of already imported audio.
+  if(e?.name==="AbortError"){toast("Preset import cancelled.");}
+  else if(importMode==="set"&&previousMeta){
+   // The old library was never deleted before the new library finished.
+   for(const id of importedTrackIds){try{const t=state.tracks.find(x=>x.id===id);if(t)await removeAudio(t)}catch(err){console.warn("Rollback audio cleanup failed",err)}}
+   state=Object.assign(state,JSON.parse(JSON.stringify(previousMeta)));
+   normalizeStats();normalizeProfile();state.currentId=null;state.queue=[];state.queueIndex=0;
+   try{await saveMeta(true)}catch(saveErr){console.warn("Rollback metadata save failed",saveErr)}
+   render();
+   toast((e?.message||"Preset import failed.")+" Your previous library was kept safe.");
+  }else{
    try{await saveMeta(true)}catch(saveErr){console.warn("Could not checkpoint partial import",saveErr)}
    const kept=importedTrackIds.length;
    toast((e?.message||"Could not import preset.")+(kept?" Completed "+kept+" songs were kept.":""));

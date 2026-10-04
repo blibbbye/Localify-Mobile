@@ -168,6 +168,7 @@ function icon(name){
  };
  return '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">'+(p[name]||p.more2)+'</svg>';
 }
+function formatBytes(n){const v=Math.max(0,Number(n)||0);if(v<1024)return Math.round(v)+" B";if(v<1048576)return (v/1024).toFixed(v<10240?1:0)+" KB";if(v<1073741824)return (v/1048576).toFixed(v<10485760?1:0)+" MB";return (v/1073741824).toFixed(v<10737418240?2:1)+" GB"}
 function toast(msg){const el=$("#toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),3300)}
 let mobileAudioUnlocked=false;
 function unlockMobileAudio(){

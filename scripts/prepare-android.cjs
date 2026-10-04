@@ -47,6 +47,7 @@ if(!manifest.includes("android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK")){
 if(!manifest.includes("LocalifyPlaybackService")){
   manifest=manifest.replace(/\s*<\/application>/,"\n        <service android:name=\".LocalifyPlaybackService\" android:exported=\"false\" android:foregroundServiceType=\"mediaPlayback\" />\n    </application>");
 }
+if(!manifest.includes("android:largeHeap=\"true\""))manifest=manifest.replace(/<application\b([^>]*)>/,'<application$1 android:largeHeap="true">');
 fs.writeFileSync(manifestPath,manifest,"utf8");
 if(!source.includes("LocalifyNative")){
   let activity=source;

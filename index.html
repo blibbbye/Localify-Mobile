@@ -1134,6 +1134,7 @@ function showDetail(type,id){
 async function playTrack(id){
  if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{}
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
+ prepareQueueForTrack(id);
  try{if(!storageReady)await storageWait(20000)}catch{}
  recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
@@ -1149,16 +1150,31 @@ function playList(ts,start){
  state.queue=order;state.queueIndex=Math.min(Math.max(0,start||0),order.length-1);playTrack(state.queue[state.queueIndex]);
 }
 function shuffle(a){const out=[...a];for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
+function playbackContextIds(){
+ const d=state.detail;
+ if(d?.type==="album")return sortTracks(tracksForAlbum(d.id)).map(t=>t.id);
+ if(d?.type==="artist")return sortTracks(tracksForArtist(d.id)).map(t=>t.id);
+ if(d?.type==="playlist"){const p=state.playlists.find(x=>x.id===d.id);return tracksForPlaylist(p).map(t=>t.id);}
+ if(d?.type==="folder"){const f=folderById(d.id);if(f){ensureFolderArrays(f);return sortTracks(f.trackIds.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean)).map(t=>t.id);}}
+ return sortTracks(state.tracks).map(t=>t.id);
+}
+function prepareQueueForTrack(id){
+ const expected=[...new Set(playbackContextIds())].filter(x=>state.tracks.some(t=>t.id===x));
+ if(!expected.includes(id))expected.unshift(id);
+ const current=[...new Set(Array.isArray(state.queue)?state.queue:[])].filter(x=>expected.includes(x));
+ const same=expected.length===current.length&&expected.every(x=>current.includes(x));
+ if(!same||!current.length)state.queue=state.settings.shuffle?shuffle(expected):expected;
+ if(!state.queue.includes(id))state.queue.push(id);
+ state.queueIndex=state.queue.indexOf(id);
+}
 function ensurePlayerQueue(){
  if(!state.tracks.length)return false;
  state.queue=Array.isArray(state.queue)?state.queue.filter(id=>state.tracks.some(t=>t.id===id)):[];
- if(!state.queue.length){
-  state.queue=state.tracks.map(t=>t.id);
- }
+ if(!state.queue.length)state.queue=sortTracks(state.tracks).map(t=>t.id);
  if(state.currentId){
   const idx=state.queue.indexOf(state.currentId);
   if(idx>=0)state.queueIndex=idx;
-  else{state.queue.splice(Math.max(0,state.queueIndex+1),0,state.currentId);state.queueIndex=state.queue.indexOf(state.currentId);}
+  else{state.queue.unshift(state.currentId);state.queueIndex=0;}
  }
  if(!Number.isInteger(state.queueIndex)||state.queueIndex<0)state.queueIndex=0;
  return !!state.queue.length;
@@ -1166,10 +1182,18 @@ function ensurePlayerQueue(){
 function next(){
  if(state.settings.repeat==="one"){audio.currentTime=0;audio.play().catch(()=>{});return}
  if(!ensurePlayerQueue())return;
- let n=state.queueIndex+1;
- if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
- state.queueIndex=n;
- playTrack(state.queue[n]);
+ if(state.settings.shuffle&&state.queue.length>1){
+  const current=state.queue[state.queueIndex];
+  const rest=state.queue.filter((id,i)=>i!==state.queueIndex);
+  const pick=rest[Math.floor(Math.random()*rest.length)];
+  state.queue=[current,...rest.filter(id=>id!==pick),pick];
+  state.queueIndex=state.queue.length-1;
+ }else{
+  let n=state.queueIndex+1;
+  if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
+  state.queueIndex=n;
+ }
+ playTrack(state.queue[state.queueIndex]);
 }
 function prev(){
  if(audio.currentTime>4){audio.currentTime=0;return}

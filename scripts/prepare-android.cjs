@@ -54,14 +54,33 @@ if(!source.includes("LocalifyNative")){
   const open=activity.indexOf("{",activity.indexOf("class MainActivity"));
   if(open<0) throw new Error("MainActivity class body not found.");
   const bridge=
-"\\n private void attachLocalifyPlaybackBridge(){\\n"+
-"  if(getBridge()==null||getBridge().getWebView()==null)return;\\n"+
-"  getBridge().getWebView().addJavascriptInterface(new Object(){\\n"+
-"   @JavascriptInterface public void startPlaybackService(){Intent i=new Intent(MainActivity.this,LocalifyPlaybackService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}\\n"+
-"   @JavascriptInterface public void stopPlaybackService(){stopService(new Intent(MainActivity.this,LocalifyPlaybackService.class));}\\n"+
-"  },\"LocalifyNative\");\\n"+
-" }\\n"+
-" @Override protected void onCreate(android.os.Bundle savedInstanceState){super.onCreate(savedInstanceState);attachLocalifyPlaybackBridge();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(\"android.permission.POST_NOTIFICATIONS\")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{\"android.permission.POST_NOTIFICATIONS\"},701);}\\n";
+"\n private AudioManager localifyAudioManager;\n"+
+" private AudioFocusRequest localifyFocusRequest;\n"+
+" private boolean localifyHasAudioFocus=false;\n"+
+" private final AudioManager.OnAudioFocusChangeListener localifyFocusListener=new AudioManager.OnAudioFocusChangeListener(){\n"+
+"  @Override public void onAudioFocusChange(int change){\n"+
+"   if(change==AudioManager.AUDIOFOCUS_GAIN){localifyHasAudioFocus=true;dispatchLocalifyFocus(true,true);}\n"+
+"   else if(change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT||change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){localifyHasAudioFocus=false;dispatchLocalifyFocus(false,true);}\n"+
+"   else if(change==AudioManager.AUDIOFOCUS_LOSS){localifyHasAudioFocus=false;dispatchLocalifyFocus(false,false);}\n"+
+"  }\n"+
+" };\n"+
+" private void requestLocalifyAudioFocus(){\n"+
+"  localifyAudioManager=(AudioManager)getSystemService(AUDIO_SERVICE);if(localifyAudioManager==null)return;\n"+
+"  AudioAttributes attrs=new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build();\n"+
+"  if(Build.VERSION.SDK_INT>=26){localifyFocusRequest=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attrs).setOnAudioFocusChangeListener(localifyFocusListener).setWillPauseWhenDucked(false).build();localifyHasAudioFocus=localifyAudioManager.requestAudioFocus(localifyFocusRequest)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;}\n"+
+"  else{localifyHasAudioFocus=localifyAudioManager.requestAudioFocus(localifyFocusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;}\n"+
+" }\n"+
+" private void abandonLocalifyAudioFocus(){if(localifyAudioManager==null)return;if(Build.VERSION.SDK_INT>=26&&localifyFocusRequest!=null)localifyAudioManager.abandonAudioFocusRequest(localifyFocusRequest);else localifyAudioManager.abandonAudioFocus(localifyFocusListener);localifyHasAudioFocus=false;}\n"+
+" private void dispatchLocalifyFocus(boolean gained,boolean transientFocus){try{if(getBridge()!=null&&getBridge().getWebView()!=null)getBridge().getWebView().evaluateJavascript(\"window.__localifyAudioFocus&&window.__localifyAudioFocus(\"+gained+\",\"+transientFocus+\")\",null);}catch(Exception ignored){}}\n"+
+" private void attachLocalifyPlaybackBridge(){\n"+
+"  if(getBridge()==null||getBridge().getWebView()==null)return;\n"+
+"  getBridge().getWebView().addJavascriptInterface(new Object(){\n"+
+"   @JavascriptInterface public void startPlaybackService(){requestLocalifyAudioFocus();Intent i=new Intent(MainActivity.this,LocalifyPlaybackService.class);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}\n"+
+"   @JavascriptInterface public void stopPlaybackService(){abandonLocalifyAudioFocus();stopService(new Intent(MainActivity.this,LocalifyPlaybackService.class));}\n"+
+"  },\"LocalifyNative\");\n"+
+" }\n"+
+" @Override protected void onCreate(android.os.Bundle savedInstanceState){super.onCreate(savedInstanceState);attachLocalifyPlaybackBridge();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(\"android.permission.POST_NOTIFICATIONS\")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{\"android.permission.POST_NOTIFICATIONS\"},701);}\n"+
+" @Override protected void onDestroy(){abandonLocalifyAudioFocus();super.onDestroy();}\n";
   activity=activity.slice(0,open+1)+bridge+activity.slice(open+1);
   fs.writeFileSync(mainActivity,activity,"utf8");
 }

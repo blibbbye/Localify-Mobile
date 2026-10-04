@@ -1493,7 +1493,7 @@ async function boot(){
  }catch(e){console.error("boot storage",e)}
 }
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=20261004-hotfix3",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
+ navigator.serviceWorker.register("./sw.js?v=20261004-hotfix4",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
 }
 boot().then(()=>{setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},400)});
 })();

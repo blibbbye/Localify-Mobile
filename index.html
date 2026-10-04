@@ -1098,7 +1098,7 @@ async function exportPreset(){
  busyShow("Building preset","Collecting metadata…");
  try{
   busyCheck();
-  const manifest={version:14,schema:"localify-preset-v2",presetKind:"full",presetName:"Full library",exportedAt:new Date().toISOString(),portableAudio:true,trackCount:state.tracks.length,audioTrackCount:0,artists:state.artists.map(x=>({...x})),albums:state.albums.map(x=>({...x})),tracks:[],playlists:state.playlists.map(x=>({...x})),liked:[...state.liked],recent:[...state.recent],settings:{...state.settings}};
+  const manifest={version:14,schema:"localify-preset-v2",presetKind:"full",presetName:"Full library",exportedAt:new Date().toISOString(),portableAudio:true,trackCount:state.tracks.length,audioTrackCount:0,artists:state.artists.map(x=>({...x})),albums:state.albums.map(x=>({...x})),tracks:[],playlists:state.playlists.map(x=>({...x})),folders:(state.folders||[]).map(x=>({...x})),liked:[...state.liked],recent:[...state.recent],settings:{...state.settings}};
   const files=[{name:"library.json",bytes:new TextEncoder().encode(JSON.stringify(manifest))}];
   let done=0;
   for(const src of state.tracks){busyCheck();done++;busyUpdate("Preparing preset",done+" / "+state.tracks.length+" songs");const b=await loadAudio(src);if(!b)throw new Error("Audio missing for "+trackTitle(src)+".");const t={...src};delete t._blob;t.storage="";t.hasAudio=true;t.audioFile="audio/"+src.id+(src.fileName?.match(/\.[^.]+$/)||[".bin"])[0];t.audioSize=b.size;manifest.tracks.push(t);manifest.audioTrackCount++;files.push({name:t.audioFile,bytes:new Uint8Array(await b.arrayBuffer())})}

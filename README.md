@@ -29,7 +29,7 @@ The site is a standalone mobile build; it does not replace the desktop/web Local
 
 This repository includes a GitHub Actions workflow that generates a Capacitor Android project and builds a debug APK.
 
-Open the Actions tab and run Build Localio Mobile Android APK (or push a matching change). The workflow uploads the APK as an artifact named localify-mobile-debug.
+Open the Actions tab and run Build Localio Mobile Android APK (or push a matching change). The workflow uploads the APK as an artifact named localio-mobile-debug.
 
 The Android build also installs a small foreground playback service and a JavaScript bridge so the WebView can request background playback support.
 
@@ -51,4 +51,4 @@ The APK will be under android/app/build/outputs/apk/debug/.
 
 ## Storage v4
 
-The mobile web app uses OPFS as the primary audio store when the browser supports it. The fallback uses 2 MB binary chunks in IndexedDB rather than storing large File/Blob objects as single records. Existing Localio Mobile v2 audio remains readable and is migrated lazily when played. Large preset imports stream ZIP audio directly into storage, checkpoint metadata during the import, keep completed Add-mode songs after an error, and make Set-mode replacement rollback-safe. Browser storage still has a device/browser quota; no website can provide literally unlimited storage.
+The mobile web app uses OPFS as the primary audio store when the browser supports it. The fallback uses 2 MB binary chunks in IndexedDB rather than storing large File/Blob objects as single records. Existing Localio Mobile v2 audio remains readable and is migrated lazily when played. Large backup imports stream ZIP audio directly into storage, checkpoint metadata during the import, keep completed Add-mode songs after an error, and make Set-mode replacement rollback-safe. Browser storage still has a device/browser quota; no website can provide literally unlimited storage.

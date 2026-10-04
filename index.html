@@ -1252,153 +1252,115 @@ function choosePresetImportMode(){
 }
 async function importPreset(file){
  if(!file)return;
- busyShow("Importing preset","Opening "+file.name+"…");
- let importMode="add",oldMeta=null,oldTracks=null,stagedTrackIds=[];
+ busyShow("Importing preset","Preparing "+((Number(file.size)||0)/1073741824).toFixed(2)+" GB preset…");
+ let importMode="add",importedTrackIds=[],importedArtistIds=[],importedAlbumIds=[],importedPlaylistIds=[],importedFolderIds=[];
  try{
   await ensureStorageForAction();
   await persistRequest();
   busyCheck();
-  busyUpdate("Importing preset","Reading the ZIP index…",3);
+  busyUpdate("Importing preset","Reading the ZIP index…",2);
   const index=await readZipIndex(file),mf=index.get("library.json");
   if(!mf)throw new Error("This file does not contain Localify library.json.");
   const manifest=sanitizeManifest(JSON.parse(await (await zipEntryBlob(file,mf)).text()));
-  const kind=manifest.presetKind||"full";
-  if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length&&!manifest.folders.length&&kind!=="settings"){
-   throw new Error("This preset does not contain supported Localify data.");
-  }
-
-  if(kind==="full"){
-   busyHide();
-   importMode=await choosePresetImportMode();
-   if(!importMode){toast("Preset import cancelled.");return}
-   busyShow("Importing preset","Preparing safe import…");
-   if(importMode==="set"){
-    // Keep the old library and its audio untouched until the new preset is completely written.
-    oldMeta=cloneMeta();
-    oldTracks=[...state.tracks];
-    audio.pause();currentBlob=null;if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl=""}audio.removeAttribute("src");
-    state.tracks=[];state.albums=[];state.artists=[];state.playlists=[];state.folders=[];state.liked=[];state.recent=[];state.queue=[];state.queueIndex=0;state.currentId=null;
-    if(manifest.settings)state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},JSON.parse(JSON.stringify(manifest.settings)));
-  }
+  if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length&&!manifest.folders.length)throw new Error("This preset does not contain supported Localify data.");
 
   const audioBytes=manifest.tracks.reduce((n,t)=>{
-   const ent=t.audioFile?index.get(t.audioFile):null;
-   return n+(ent?Number(ent.uncompSize)||0:0);
+   const e=t.audioFile?index.get(t.audioFile):null;
+   return n+(e?Number(e.uncompSize)||0:0);
   },0);
-  const est=navigator.storage?.estimate?await navigator.storage.estimate():{};
-  const free=Math.max(0,(Number(est.quota)||0)-(Number(est.usage)||0));
-  busyUpdate("Importing preset","Audio to store: "+formatBytes(audioBytes)+(free?" • free now: "+formatBytes(free):"")+".",6);
+  const estimate=navigator.storage?.estimate?await navigator.storage.estimate():null;
+  const quota=Number(estimate?.quota)||0,used=Number(estimate?.usage)||0,free=Math.max(0,quota-used);
+  busyUpdate("Importing preset","Audio to store: "+formatBytes(audioBytes)+(free?" • free now: "+formatBytes(free):"")+".",4);
 
-  const sourceId=String(manifest.importId||manifest.id||file.name+"|"+file.size+"|"+file.lastModified);
-  const artistIdMap=new Map(),albumIdMap=new Map(),trackIdMap=new Map(),playlistIdMap=new Map();
-
-  if(kind==="settings"){
-   state.settings=Object.assign(state.settings,JSON.parse(JSON.stringify(manifest.settings||{})));
-   await saveMeta(true);render();toast("Settings imported.");return;
+  if((manifest.presetKind||"full")==="full"){
+   busyHide();await new Promise(resolve=>setTimeout(resolve,140));
+   importMode=await choosePresetImportMode();
+   if(!importMode){toast("Preset import cancelled.");return}
+   busyShow("Importing preset","Starting…");busyUpdate("Importing preset","Preparing "+manifest.tracks.length+" songs…",2);
+   if(importMode==="set"){
+    audio.pause();currentBlob=null;if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl=""}audio.removeAttribute("src");state.currentId=null;state.queue=[];state.queueIndex=0;
+    for(const oldTrack of [...state.tracks]){busyCheck();await removeAudio(oldTrack)}
+    state.tracks=[];state.albums=[];state.artists=[];state.playlists=[];state.folders=[];state.liked=[];state.recent=[];
+    if(manifest.settings)state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},JSON.parse(JSON.stringify(manifest.settings)));
+   }
   }
 
+  const artistIdMap=new Map(),albumIdMap=new Map(),trackIdMap=new Map(),playlistIdMap=new Map();
   for(const src of manifest.artists){
    const a=JSON.parse(JSON.stringify(src)),oldId=a.id||uid();
    const existing=state.artists.find(x=>String(x.name||"").trim().toLowerCase()===String(a.name||"").trim().toLowerCase());
    if(existing){artistIdMap.set(oldId,existing.id);continue}
-   a.id=state.artists.some(x=>x.id===a.id)?uid():oldId;state.artists.push(a);artistIdMap.set(oldId,a.id);
+   a.id=state.artists.some(x=>x.id===a.id)?uid():oldId;state.artists.push(a);artistIdMap.set(oldId,a.id);importedArtistIds.push(a.id);
   }
-
   for(const src of manifest.albums){
    const a=JSON.parse(JSON.stringify(src)),oldId=a.id||uid();
-   const mapped=(Array.isArray(src.artistIds)?src.artistIds:[]).map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
-   const names=String(src.artistNames||src.artist||"").split(/[,;]\\s*/).map(x=>x.trim()).filter(Boolean);
-   const byName=names.map(n=>state.artists.find(x=>String(x.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);
-   const arts=[...new Set(mapped.length?mapped:byName)];
-   if(arts.length){a.artistIds=arts;a.artistNames=arts.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ");a.artist=a.artistNames}
-   const existing=state.albums.find(x=>String(x.title||"").trim().toLowerCase()===String(a.title||"").trim().toLowerCase()&&(!arts.length||((Array.isArray(x.artistIds)&&x.artistIds.length===arts.length&&arts.every(id=>x.artistIds.includes(id))))));
+   const mappedArtists=(Array.isArray(src.artistIds)?src.artistIds:[]).map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
+   const fallbackNames=String(src.artistNames||src.artist||"").split(/[,;]\s*/).map(x=>x.trim()).filter(Boolean);
+   const fallbackArtistIds=fallbackNames.map(n=>state.artists.find(v=>String(v.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);
+   const finalArtists=[...new Set(mappedArtists.length?mappedArtists:fallbackArtistIds)];
+   if(finalArtists.length){a.artistIds=finalArtists;a.artistNames=a.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ");a.artist=a.artistNames}
+   const existing=state.albums.find(x=>String(x.title||"").trim().toLowerCase()===String(a.title||"").trim().toLowerCase()&&(!a.artistIds?.length||(Array.isArray(x.artistIds)&&a.artistIds.every(id=>x.artistIds.includes(id)))));
    if(existing){albumIdMap.set(oldId,existing.id);continue}
-   a.id=state.albums.some(x=>x.id===a.id)?uid():oldId;state.albums.push(a);albumIdMap.set(oldId,a.id);
+   a.id=state.albums.some(x=>x.id===a.id)?uid():oldId;state.albums.push(a);albumIdMap.set(oldId,a.id);importedAlbumIds.push(a.id);
   }
 
-  let done=0;
-  const checkpoint=async force=>{
-   if(!force&&done%5!==0)return;
-   await saveMeta(false);
-   await new Promise(resolve=>setTimeout(resolve,0));
-  };
-
+  let done=0,lastImportPaint=0;
   for(const src0 of manifest.tracks){
-   busyCheck();
-   const sourceTrackId=String(src0.id||src0.audioFile||src0.title||uid());
-   const existingImported=importMode==="add"&&state.tracks.find(x=>x._importSourceId===sourceId&&x._importTrackId===sourceTrackId);
-   if(existingImported){
-    trackIdMap.set(sourceTrackId,existingImported.id);
-    done++;
-    busyUpdate("Importing preset","Already imported • "+done+" / "+manifest.tracks.length,Math.round((done/(manifest.tracks.length||1))*92)+6);
-    continue;
+   busyCheck();done++;
+   const title=src0.title||src0.fileName||"song";
+   if(done===1||done===manifest.tracks.length||done-lastImportPaint>=8){
+    lastImportPaint=done;
+    busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
    }
-
-   const t=JSON.parse(JSON.stringify(src0));
-   t.id=state.tracks.some(x=>x.id===t.id)?uid():(t.id||uid());
-   t._importSourceId=sourceId;t._importTrackId=sourceTrackId;
-   const mapped=(Array.isArray(src0.artistIds)?src0.artistIds:[]).map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
-   if(mapped.length){t.artistIds=[...new Set(mapped)];t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ")||t.artist||NONE}
-   else if(src0.artist){
-    const names=String(src0.artist).split(/[,;]\\s*/).map(x=>x.trim()).filter(Boolean);
-    const ids=names.map(n=>state.artists.find(a=>String(a.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);
-    if(ids.length){t.artistIds=[...new Set(ids)];t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ")}
-   }
+   const t=JSON.parse(JSON.stringify(src0)),sourceId=t.id||uid(),originalId=sourceId;
+   const importSourceId=String(manifest.importId||manifest.id||file.name+"|"+file.size+"|"+file.lastModified);
+   const existingImported=importMode==="add"&&state.tracks.find(x=>x._importSourceId===importSourceId&&x._importTrackId===String(originalId));
+   if(existingImported){trackIdMap.set(originalId,existingImported.id);continue}
+   t.id=state.tracks.some(x=>x.id===sourceId)?uid():sourceId;
+   t._importSourceId=importSourceId;t._importTrackId=String(originalId);
+   const mappedArtists=(Array.isArray(src0.artistIds)?src0.artistIds:[]).map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
+   if(mappedArtists.length){t.artistIds=[...new Set(mappedArtists)];t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ")||t.artist||NONE}
+   else if(src0.artist){const names=String(src0.artist).split(/[,;]\s*/).map(x=>x.trim()).filter(Boolean);const ids=names.map(n=>state.artists.find(a=>String(a.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);if(ids.length){t.artistIds=[...new Set(ids)];t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ")}}
    t.albumId=src0.albumId?(albumIdMap.get(src0.albumId)||null):null;
    if(t.albumId){const a=state.albums.find(x=>x.id===t.albumId);if(a){t.album=a.title;t.albumArtist=a.artistNames||a.artist||t.albumArtist||NONE}}
    if(Array.isArray(src0.albumArtistIds))t.albumArtistIds=[...new Set(src0.albumArtistIds.map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id)))];
-   const ent=t.audioFile?index.get(t.audioFile):null;
-   busyUpdate("Importing preset",(done+1)+" / "+manifest.tracks.length+" • "+(t.title||t.fileName||"song"),Math.round((done/(manifest.tracks.length||1))*92)+6);
-   if(ent){await saveZipAudio(t,file,ent)}else if(t.hasAudio)throw new Error("Missing audio for "+(t.title||t.fileName||"song"));
-   t.blob=null;t._blob=null;state.tracks.push(t);stagedTrackIds.push(t.id);trackIdMap.set(sourceTrackId,t.id);done++;
-   await checkpoint(false);
+   const e=t.audioFile?index.get(t.audioFile):null;
+   if(e){await saveZipAudio(t,file,e)}else if(t.hasAudio)throw new Error("Missing audio for "+title);
+   t._blob=null;t.blob=null;state.tracks.push(t);trackIdMap.set(originalId,t.id);importedTrackIds.push(t.id);
+   if(done%5===0)await saveMeta(false);
+   if(done%8===0)await new Promise(resolve=>setTimeout(resolve,0));
   }
 
+  busyCheck();
   for(const src of manifest.playlists){
    const x=JSON.parse(JSON.stringify(src)),oldId=x.id||uid();
    x.id=state.playlists.some(v=>v.id===x.id)?uid():oldId;
-   x.trackIds=(Array.isArray(src.trackIds)?src.trackIds:[]).map(id=>trackIdMap.get(String(id))||trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
+   x.trackIds=(Array.isArray(src.trackIds)?src.trackIds:[]).map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
    const existing=state.playlists.find(v=>String(v.name||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase());
    if(existing){playlistIdMap.set(oldId,existing.id);if(x.trackIds.length)existing.trackIds=[...new Set([...(existing.trackIds||[]),...x.trackIds])]}
-   else{state.playlists.push(x);playlistIdMap.set(oldId,x.id)}
+   else{state.playlists.push(x);playlistIdMap.set(oldId,x.id);importedPlaylistIds.push(x.id)}
   }
-
-  if(Array.isArray(manifest.folders))for(const src of manifest.folders){
-   const x=JSON.parse(JSON.stringify(src)),oldId=x.id||uid();x.id=state.folders.some(v=>v.id===x.id)?uid():oldId;ensureFolderArrays(x);
+  if(Array.isArray(manifest.folders))manifest.folders.forEach(f=>{
+   const x=JSON.parse(JSON.stringify(f)),oldId=x.id||uid();x.id=state.folders.some(v=>v.id===x.id)?uid():oldId;ensureFolderArrays(x);
    x.albumIds=x.albumIds.map(id=>albumIdMap.get(id)||id).filter(id=>state.albums.some(a=>a.id===id));
-   x.trackIds=x.trackIds.map(id=>trackIdMap.get(String(id))||trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
+   x.trackIds=x.trackIds.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
    x.artistIds=x.artistIds.map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(a=>a.id===id));
    x.playlistIds=x.playlistIds.map(id=>playlistIdMap.get(id)||id).filter(id=>state.playlists.some(p=>p.id===id));
-   if(!state.folders.some(v=>String(v.name||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase()))state.folders.push(x);
-  }
-
-  const mapIds=arr=>(arr||[]).map(id=>trackIdMap.get(String(id))||trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
-  if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...mapIds(manifest.liked)])];
-  if(Array.isArray(manifest.recent))state.recent=[...new Set([...mapIds(manifest.recent),...state.recent])].slice(0,100);
-
-  if(importMode==="set"&&oldTracks){
-   for(const oldTrack of oldTracks){try{await removeAudio(oldTrack)}catch(e){console.warn("Old audio cleanup failed",e)}}
-  }
-
-  await saveMeta(true);
-  state.tracks=sortTracks(state.tracks);
-  render();
-  toast("Preset imported successfully.");
+   if(!state.folders.some(v=>String(v.name||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase())){state.folders.push(x);importedFolderIds.push(x.id)}
+  });
+  if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id))])];
+  if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id)),...state.recent])].slice(0,100);
+  await saveMeta(true);busyUpdate("Importing preset","Finished. Updating your library…",100);render();toast("Preset imported successfully.");
  }catch(e){
   console.error("Localify Mobile preset import failed",e);
-  if(importMode==="set"&&oldMeta){
-   // Roll back the staged library without touching the original audio files.
-   for(const id of stagedTrackIds){try{const t=state.tracks.find(x=>x.id===id);if(t)await removeAudio(t)}catch(err){console.warn("Rollback audio cleanup failed",err)}}
-   state=Object.assign(state,JSON.parse(JSON.stringify(oldMeta)));
-   normalizeProfile();normalizeStats();
-   state.currentId=null;state.queue=[];state.queueIndex=0;
-   try{await saveMeta(true)}catch(err){console.warn("Rollback metadata save failed",err)}
-   render();
-   toast((e?.message||"Preset import failed.")+" Your previous library was kept.");
-  }else{
+  if(e?.name==="AbortError")toast("Preset import cancelled.");
+  else{
+   // Keep every song that was successfully written before the failure.
+   // This is important for large presets: a late storage/ZIP error must not
+   // force the browser to delete gigabytes of already imported audio.
    try{await saveMeta(true)}catch(saveErr){console.warn("Could not checkpoint partial import",saveErr)}
-   const kept=stagedTrackIds.length;
-   toast((e?.message||"Preset import failed.")+(kept?" Completed "+kept+" songs were kept.":""));
+   const kept=importedTrackIds.length;
+   toast((e?.message||"Could not import preset.")+(kept?" Completed "+kept+" songs were kept.":""));
   }
  }finally{busyHide()}
 }

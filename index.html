@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-2">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-native-audio-storage-3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -485,32 +485,35 @@ async function loadAudio(t){
   const b=await nativeLoadAudio(t);if(b)return b;
  }
  if(t.storage==="external"&&externalDir){
-  try{return await externalAudioFile(t.id)}catch{}
+  try{
+   return await externalAudioFile(t.id);
+  }catch(e){}
  }
  if(t.storage==="opfs"){
   try{
    const b=await opfsFile(t.id,false);
-   if(b?.size)return b;
-  }catch{}
+   if(b&&b.size)return b;
+  }catch(e){}
  }
  if(t.storage==="idb-chunks"){
   try{
    const meta=await idbGet("audioMeta",t.id);
-   if(meta?.chunks){
+   if(meta&&meta.chunks){
     const parts=[];
     for(let i=0;i<meta.chunks;i++){
      const part=await idbGet("audioChunks",[t.id,i]);
      if(!part)throw new Error("Missing saved audio chunk "+i);
      parts.push(part);
+    }
+    return new Blob(parts,{type:meta.type||t.mimeType||"application/octet-stream"});
    }
-   return new Blob(parts,{type:meta.type||t.mimeType||"application/octet-stream"});
   }catch(e){console.warn("IndexedDB audio read failed",e)}
  }
  try{
   const legacy=await idbGet("files",t.id);
   if(legacy instanceof Blob)return legacy;
-  if(legacy?.blob instanceof Blob)return legacy.blob;
- }catch{}
+  if(legacy&&legacy.blob instanceof Blob)return legacy.blob;
+ }catch(e){}
  return null;
 }
 

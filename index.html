@@ -1089,7 +1089,7 @@ function bindEvents(){
   if(a==="folderBack"){closeModal();setTimeout(()=>openFolderAddMenu(id),0);return}
   if(a==="folderSaveItems"){
     const f=folderById(id),kind=b.dataset.kind;
-    if(f){ensureFolderArrays(f);const key=folderKey(kind);const selected=[...document.querySelectorAll(".folderPick")].filter(x=>x.checked).map(x=>x.dataset.id);f[key]=selected;saveMeta(true).catch(()=>{});}
+    if(f){ensureFolderArrays(f);const key=folderKey(kind);const selected=[...document.querySelectorAll(".folderPick")].filter(x=>x.checked).map(x=>x.dataset.id);f[key]=selected;try{await ensureStorageForAction();await saveMeta(true);toast("Folder updated.");}catch(e){console.warn("folder save failed",e);toast("Could not save the folder yet.");}}
     closeModal();showFolder(id);return;
   }
   if(a==="deleteFolder"){

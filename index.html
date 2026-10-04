@@ -28,14 +28,14 @@ button{border:0}
 .brandText strong{font-size:13px;letter-spacing:-.45px}.brandText small{font-size:7px;letter-spacing:.12em;color:#74808e;margin-top:3px}
 .brandLogo{width:34px;height:34px;border-radius:9px;background:#7dd3fc;color:#081017;display:grid;place-items:center;font-weight:1000;font-size:19px;line-height:1;box-shadow:0 8px 22px rgba(125,211,252,.18);flex:none}.brandLogo span{display:block}.brand img{width:34px;height:34px;border-radius:9px;object-fit:cover}
 .topRight{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
-.profileBtn{height:44px;max-width:150px;padding:0 11px;border-radius:12px;border:1px solid #2b3540;background:#151b21;color:#dce6ed;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;overflow:hidden}
+.profileBtn{height:48px;max-width:150px;padding:0 11px;border-radius:12px;border:1px solid #2b3540;background:#151b21;color:#dce6ed;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:850;overflow:hidden}
 .profileBtn:hover{background:#1b222a;border-color:#3a4652}
 /* Keep the profile/PFP control at the absolute far right of the top bar. */
 .topRight{flex:1}
 .brand{order:1}
 .profileBtn{order:2;margin-left:auto}
 
-.profileBtn .profileIcon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:#9ee5ff;background:#24313c}
+.profileBtn .profileIcon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;color:#9ee5ff;background:#24313c}
 .profileBtn .profileIcon .i{width:15px;height:15px;margin:0}
 .profileBtnText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .profileCard{display:grid;gap:14px}
@@ -53,7 +53,7 @@ button{border:0}
 .recapBox{padding:12px;border:1px solid rgba(125,211,252,.2);background:rgba(125,211,252,.055);border-radius:14px}.recapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:8px}.recapStat{padding:9px 10px;border-radius:11px;background:#11181e;border:1px solid #25313a}.recapStat strong{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.recapStat span{display:block;color:#7a8794;font-size:9px;margin-top:2px}
 .profileSettings{display:grid;gap:8px}.profileSetting{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #242e37;border-radius:11px;background:#11171c}.profileSetting>span{font-size:11px;font-weight:800}.profileSetting input{width:130px}.profileSetting select{width:110px}
 .profileFoot{display:flex;gap:7px}.profileFoot .btn{flex:1}.loginBox{display:grid;gap:11px}.loginHint{color:#7f8a96;font-size:10px;line-height:1.45}
-@media(max-width:430px){.profileBtn{width:38px;height:38px;padding:0;border-radius:11px}.profileBtnText{display:none}.profileStats{grid-template-columns:1fr}.topRight{gap:5px}.brandText strong{font-size:11px}}
+.coverEditRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.coverEditPreview{width:84px;height:84px;border-radius:12px;overflow:hidden;background:#202832;border:1px solid #33404b;display:grid;place-items:center}.coverEditPreview img{width:100%;height:100%;object-fit:cover}.coverEditPreview .i{width:32px;height:32px;color:#6f7d89}.playerVolume input{touch-action:pan-x;min-height:28px}.playerVolume{touch-action:pan-y}@media(max-width:430px){.profileBtn{width:48px;height:48px;padding:0;border-radius:11px}.profileBtnText{display:none}.profileStats{grid-template-columns:1fr}.topRight{gap:5px}.brandText strong{font-size:11px}}
 main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;margin:auto}
 .head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.headText{min-width:0}.head h1{margin:0;font-size:26px;letter-spacing:-.8px}.head p{margin:4px 0 0;font-size:11px;color:var(--muted)}
 .btn{min-height:42px;padding:9px 12px;border:1px solid #303a45;border-radius:12px;background:#151b21;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:850}
@@ -1516,7 +1516,7 @@ function openPlayerControls(){
      '<button class="sheetItem" data-action="playerRepeat"><span class="controlBadge">'+esc((state.settings.repeat||"off").toUpperCase())+'</span><span>Repeat</span></button>'+
    '</div>'+
    '<div class="playerVolume"><div class="playerVolumeHead"><strong>Volume</strong><span id="playerVolumeValue">'+vol+'%</span></div><input id="playerVolumeRange" type="range" min="0" max="1" step=".01" value="'+String(state.settings.volume??.9)+'"></div>');
- const setPlayerVolume=e=>{const v=Math.max(0,Math.min(1,Number(e.target.value)||0));state.settings.volume=v;audio.volume=v;const label=$("#playerVolumeValue");if(label)label.textContent=Math.round(v*100)+"%";scheduleSave()}; const pvr=$("#playerVolumeRange");if(pvr){pvr.addEventListener("input",setPlayerVolume);pvr.addEventListener("change",setPlayerVolume)}
+ const setPlayerVolume=e=>{const raw=Number(e.target.value);const v=Math.max(0,Math.min(1,Number.isFinite(raw)?raw:0));state.settings.volume=v;audio.volume=v;const label=$("#playerVolumeValue");if(label)label.textContent=Math.round(v*100)+"%";scheduleSave()}; const pvr=$("#playerVolumeRange");if(pvr){pvr.addEventListener("input",setPlayerVolume);pvr.addEventListener("change",setPlayerVolume);pvr.addEventListener("touchstart",e=>e.stopPropagation(),{passive:true});pvr.addEventListener("pointerdown",e=>e.stopPropagation())}
 }
 function openPlayerEffects(){
  closeSheet();

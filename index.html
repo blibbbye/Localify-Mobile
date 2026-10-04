@@ -532,7 +532,7 @@ function songRow(t){
    '<div class="cover" data-cover-id="'+esc(t.id)+'">'+icon("library")+'</div>'+
    '<div class="rtext"><div class="rtitle">'+esc(trackTitle(t))+(t.explicit?'<span class="pill">E</span>':"")+'</div><div class="rsub">'+esc(artistText(t))+" • "+esc(albumName(t))+'</div></div>'+
    '<div class="rtime">'+esc(duration(t.duration))+'</div>'+
-   '<button class="circle" data-action="songMenu" aria-label="More">'+icon("more2")+'</button>'+
+   '<button class="circle" data-action="songMenu" data-id="'+esc(t.id)+'" aria-label="More">'+icon("more2")+'</button>'+
  '</div>';
 }
 function albumCard(a){
@@ -553,11 +553,19 @@ function renderHome(){
  $("#main").innerHTML=
  '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists and folders.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Folders</strong><button class="btn small" data-action="createFolder">'+icon("plus")+'Add folder</button></div>'+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use Add folder to create one.</div>')+'</div>'+
+ '<div class="section"><div class="sectionHead"><strong>Folders</strong><button class="btn primary small icon" data-action="homeCreateMenu" aria-label="Create">'+icon("plus")+'</button></div>'+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use Add folder to create one.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your artists</strong><span>'+state.artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Create an artist or import music.</div>')+'</div>'+
  '<div class="section"><div class="sectionHead"><strong>Your playlists</strong><span>'+state.playlists.length+'</span></div>'+(playlists.length?'<div class="grid">'+playlists.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Create a playlist to see it here.</div>')+'</div>';
  bindCovers();
+}
+function homeCreateMenu(){
+ openSheet('<h2>Create</h2><div class="sheetGrid">'+
+  '<button class="sheetItem" data-action="createFolder">'+icon("folder")+'<span>Folder</span></button>'+
+  '<button class="sheetItem" data-action="createAlbum">'+icon("albums")+'<span>Album</span></button>'+
+  '<button class="sheetItem" data-action="createArtist">'+icon("artists")+'<span>Artist</span></button>'+
+  '<button class="sheetItem" data-action="createPlaylist">'+icon("playlists")+'<span>Playlist</span></button>'+
+ '</div>');
 }
 function trackCard(t){return '<div class="card playButton" data-action="playSong" data-id="'+esc(t.id)+'">'+art(t,"art")+'<div class="title">'+esc(trackTitle(t))+'</div><div class="sub">'+esc(artistText(t))+'</div></div>'}
 function renderSearch(){
@@ -1103,7 +1111,8 @@ function bindEvents(){
   if(a==="playerShuffle"){state.settings.shuffle=!state.settings.shuffle;scheduleSave();openPlayerControls();return}
   if(a==="playerRepeat"){state.settings.repeat=state.settings.repeat==="off"?"all":state.settings.repeat==="all"?"one":"off";scheduleSave();openPlayerControls();return}
   if(a==="setFx"){setAudioFx(b.dataset.fx);closeModal();return}
-    if(a==="openLibraryTools"){openLibraryTools();return}
+    if(a==="homeCreateMenu"){homeCreateMenu();return}
+  if(a==="openLibraryTools"){openLibraryTools();return}
   if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
   if(a==="exportPreset"){closeSheet();exportPreset();return}
   if(a==="backupMeta"){closeSheet();backupMeta();return}

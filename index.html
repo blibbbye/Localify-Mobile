@@ -75,7 +75,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 .sheetShade{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:none;align-items:flex-end}.sheetShade.open{display:flex}.sheet{width:100%;max-height:88dvh;overflow:auto;background:#10151a;border-top:1px solid #2c3540;border-radius:22px 22px 0 0;padding:12px 12px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -25px 70px rgba(0,0,0,.5)}.sheetGrab{width:42px;height:4px;background:#48525e;border-radius:99px;margin:0 auto 12px}.sheet h2{margin:4px 2px 12px;font-size:20px}.sheetGrid{display:grid;gap:7px}.sheetItem{min-height:46px;width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#151b21;border:1px solid #27313b;border-radius:12px;text-align:left}.sheetItem .i{width:18px;height:18px}
 .modalShade{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.68);display:none;align-items:flex-end}.modalShade.open{display:flex}.modal{width:100%;max-height:92dvh;overflow:auto;background:#11161c;border-top:1px solid #2f3944;border-radius:22px 22px 0 0;padding:14px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -30px 80px rgba(0,0,0,.6)}.modalHead{display:flex;align-items:center;justify-content:space-between;gap:10px}.modalHead h2{margin:0;font-size:20px}.form{display:grid;gap:10px;margin-top:14px}.field{display:grid;gap:5px}.field label{font-size:10px;font-weight:900;color:#84909c;text-transform:uppercase;letter-spacing:.07em}.field input,.field textarea,.field select{width:100%;border:1px solid #2b3540;background:#0c1116;color:#f2f5f7;border-radius:11px;padding:11px;outline:0}.field textarea{min-height:130px;resize:vertical}.modalFoot{display:flex;gap:7px;margin-top:14px}.modalFoot .btn{flex:1}.coverPick{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center}.coverPickPreview{width:82px;height:82px;border-radius:14px;overflow:hidden;background:#202832;display:grid;place-items:center}.coverPickPreview img{width:100%;height:100%;object-fit:cover}
 .toast{position:fixed;left:12px;right:12px;bottom:calc(var(--player) + var(--nav) + 10px);z-index:150;padding:11px 13px;border-radius:12px;background:#171d23;border:1px solid #303a45;box-shadow:0 14px 45px rgba(0,0,0,.4);font-size:12px;font-weight:800;opacity:0;transform:translateY(8px);pointer-events:none;transition:.18s}.toast.show{opacity:1;transform:translateY(0)}
-.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.62);display:none;align-items:center;justify-content:center;padding:24px;text-align:center;pointer-events:none}.busyShade.open{display:flex;pointer-events:none}.busyCard{pointer-events:auto;width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}.busyCard .btn{display:block;width:100%;margin-top:14px}
+.busyShade{position:fixed;inset:0;z-index:200;background:rgba(5,7,9,.62);display:none;align-items:center;justify-content:center;padding:24px;text-align:center;pointer-events:none}.busyShade.open{display:flex;pointer-events:none}.busyCard{pointer-events:auto;width:min(440px,100%);background:#12181e;border:1px solid #313c47;border-radius:20px;padding:22px;box-shadow:0 25px 80px rgba(0,0,0,.55)}.busySpinner{width:38px;height:38px;border-radius:50%;border:3px solid #2f3944;border-top-color:var(--accent);margin:0 auto 14px;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.busyCard strong{display:block;font-size:17px}.busyProgress{height:5px;border-radius:99px;background:#252e38;overflow:hidden;margin-top:13px}.busyProgress div{height:100%;width:0;background:var(--accent);transition:width .2s ease}.busyCard span{display:block;margin-top:6px;color:#8b97a4;font-size:11px;line-height:1.45}.busyCard .btn{display:block;width:100%;margin-top:14px}
 .detailHero{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;align-items:center;padding:8px 0 15px}.detailArt{width:120px;height:120px;border-radius:18px;overflow:hidden;background:#202832;display:grid;place-items:center}.detailArt img{width:100%;height:100%;object-fit:cover}.detailTitle{font-size:25px;font-weight:950;line-height:1.02;letter-spacing:-1px;margin:0}.detailSub{margin-top:7px;color:#87929f;font-size:11px;line-height:1.45}
 .pill{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #29323c;background:#151b21;border-radius:99px;font-size:9px;color:#8b96a1;margin:4px 4px 0 0}
 .morePanel{display:grid;gap:7px}.morePanel .btn{width:100%;justify-content:flex-start}
@@ -114,13 +114,13 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 </section>
 <div class="sheetShade" id="sheetShade"><div class="sheet" id="sheet"></div></div>
 <div class="modalShade" id="modalShade"><div class="modal" id="modal"></div></div>
-<div class="busyShade" id="busyShade"><div class="busyCard"><div class="busySpinner"></div><strong id="busyTitle">Working…</strong><span id="busyText">Please keep Localify open while this finishes.</span><button class="btn" id="cancelBusyBtn" type="button">Cancel</button></div></div>
+<div class="busyShade" id="busyShade"><div class="busyCard"><div class="busySpinner"></div><strong id="busyTitle">Working…</strong><div class="busyProgress"><div id="busyProgressBar"></div></div><span id="busyText">Please keep Localify open while this finishes.</span><button class="btn" id="cancelBusyBtn" type="button">Cancel</button></div></div>
 <div class="toast" id="toast"></div>
 <input id="audioPicker" type="file" hidden multiple accept="audio/*,.mp3,.m4a,.mp4,.aac,.flac,.wav,.ogg,.oga,.opus,.webm,.aiff,.aif,.alac,.caf">
 <input id="folderPicker" type="file" hidden webkitdirectory directory multiple accept="audio/*,.mp3,.m4a,.mp4,.aac,.flac,.wav,.ogg,.oga,.opus,.webm,.aiff,.aif,.alac,.caf">
 <input id="imagePicker" type="file" hidden accept="image/*">
 <input id="presetPicker" type="file" hidden accept="*/*">
-<audio id="audio" preload="metadata" playsinline></audio>
+<audio id="audio" preload="auto" playsinline></audio>
 </div>
 <script>
 (function(){
@@ -179,9 +179,9 @@ function unlockMobileAudio(){
   if(p?.then)p.then(()=>{a.pause();mobileAudioUnlocked=true}).catch(()=>{});
  }catch{}
 }
-function busyShow(title,text){busy=true;operationController=new AbortController();$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";$("#busyShade").classList.add("open")}
-function busyUpdate(title,text){$("#busyTitle").textContent=title;$("#busyText").textContent=text}
-function busyHide(){busy=false;operationController=null;$("#busyShade").classList.remove("open")}
+function busyShow(title,text){busy=true;operationController=new AbortController();$("#busyTitle").textContent=title;$("#busyText").textContent=text||"Please keep Localify open while this finishes.";const bar=$("#busyProgressBar");if(bar)bar.style.width="0%";$("#busyShade").classList.add("open")}
+function busyUpdate(title,text,pct){$("#busyTitle").textContent=title;$("#busyText").textContent=text;if(Number.isFinite(Number(pct))){const bar=$("#busyProgressBar");if(bar)bar.style.width=Math.max(0,Math.min(100,Number(pct)))+"%"}}
+function busyHide(){busy=false;operationController=null;const bar=$("#busyProgressBar");if(bar)bar.style.width="100%";setTimeout(()=>$("#busyShade").classList.remove("open"),120);}
 function busyCheck(){if(operationController?.signal.aborted){const e=new Error("Operation cancelled.");e.name="AbortError";throw e}}
 function cancelBusy(){if(operationController)try{operationController.abort()}catch{};busy=false;operationController=null;$("#busyShade").classList.remove("open")}
 function openFilePicker(input){
@@ -855,6 +855,16 @@ async function updateMediaSession(t){
  try{ms.setActionHandler("seekbackward",()=>audio.currentTime=Math.max(0,audio.currentTime-10))}catch{}
  try{ms.setActionHandler("seekforward",()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10))}catch{}
 }
+function updateMediaSessionPosition(){
+ if(!("mediaSession"in navigator)||!audio.duration||!Number.isFinite(audio.duration))return;
+ try{
+  navigator.mediaSession.setPositionState({duration:audio.duration,playbackRate:Number(audio.playbackRate||1)||1,position:Math.min(audio.currentTime||0,audio.duration)});
+ }catch{}
+}
+function updatePlayerProgressOnly(){
+ const p=$("#progress");if(p)p.value=audio.duration?Math.round(audio.currentTime/audio.duration*1000):0;
+ const playing=!!state.currentId&&!audio.paused;const btn=$("#playBtn");if(btn)btn.innerHTML=icon(playing?"pause":"play");
+}
 function renderPlayer(){
  const t=state.tracks.find(x=>x.id===state.currentId);
  $("#nowTitle").textContent=t?trackTitle(t):"Nothing playing";$("#nowArtist").textContent=t?artistText(t):"Choose a song";
@@ -1056,9 +1066,10 @@ function bindEvents(){
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
  $("#prevBtn").onclick=prev; $("#playerMoreBtn")?.addEventListener("click",()=>openPlayerControls());$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};
- audio.addEventListener("play",()=>{renderPlayer();scheduleSave();pushDiscordPresence()});
- audio.addEventListener("pause",()=>{recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
- audio.addEventListener("timeupdate",()=>{recordListeningProgress();renderPlayer()});
+ audio.addEventListener("play",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="playing"}catch{};renderPlayer();scheduleSave();pushDiscordPresence()});
+ audio.addEventListener("pause",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
+ audio.addEventListener("timeupdate",()=>{recordListeningProgress();updatePlayerProgressOnly();updateMediaSessionPosition();});
+ audio.addEventListener("loadedmetadata",()=>{updatePlayerProgressOnly();updateMediaSessionPosition()});
  audio.addEventListener("ended",()=>{recordListeningProgress();next();pushDiscordPresence()});
 
  document.addEventListener("click",async e=>{
@@ -1145,6 +1156,7 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
+  busyShow("Loading save","Loading your Localify library…");busyUpdate("Loading save","Preparing local storage…",8);
   // Reset transient UI-operation state on every page load so an interrupted
   // import/export can never leave the whole page looking disabled.
   busy=false;operationController=null;saveTimer=0;
@@ -1157,16 +1169,16 @@ async function boot(){
     await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
     await persistRequest();
 
-  const had=await restore();
+  busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
   normalizeStats();normalizeProfile();
   if(!had)await saveMeta(true);
   else{
    try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}
   }
-  storageReady=true;
+  busyUpdate("Loading save","Finishing library setup…",88);storageReady=true;
   void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
   if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
-  return had;
+  busyUpdate("Loading save","Ready.",100);return had;
  }catch(e){
   console.error("storage boot",e);
   storageReady=false;
@@ -1178,10 +1190,11 @@ async function boot(){
    if(had)toast("Library restored.");
    else if(storageReady)toast("Localify Mobile ready.");
    else toast("Localify is running, but saved storage is unavailable.");
+   busyHide();
  }catch(e){console.error("boot storage",e)}
 }
 if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{})}
-boot();setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},1200);
+boot().then(()=>{setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},400)});
 })();
 </script>
 </body>

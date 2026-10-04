@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-mobile-preset-fix-1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -806,7 +806,7 @@ function sanitizeManifest(p){
  if(!p||typeof p!=="object")throw new Error("Invalid Localify preset.");
  p.tracks=Array.isArray(p.tracks)?p.tracks:[];p.artists=Array.isArray(p.artists)?p.artists:[];p.albums=Array.isArray(p.albums)?p.albums:[];p.playlists=Array.isArray(p.playlists)?p.playlists:[];p.liked=Array.isArray(p.liked)?p.liked:[];p.recent=Array.isArray(p.recent)?p.recent:[];return p;
 }
-function u16(d,o){return d.getUint16(o,true)}function u32(d,o){return d.getUint32(o,true)}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
+function u16(d,o){if(d instanceof DataView)return d.getUint16(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true);throw new TypeError("Invalid binary view")}function u32(d,o){if(d instanceof DataView)return d.getUint32(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true);throw new TypeError("Invalid binary view")}function getUnnit16(d,o){return u16(d,o)}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
 function read64(bytes,o){const d=new DataView(bytes.buffer,bytes.byteOffset+o,8);return d.getUint32(0,true)+d.getUint32(4,true)*4294967296}
 async function readZipIndex(file){
  const tailSize=Math.min(file.size,1024*1024),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer());

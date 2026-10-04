@@ -96,7 +96,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
  .brandText strong{font-size:12px}
  .nav button span{white-space:nowrap;max-width:64px;overflow:hidden;text-overflow:ellipsis}
 }
-.folderCollage{aspect-ratio:1;border-radius:11px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;background:#1a222a;gap:2px}.folderTile{min-width:0;min-height:0;background:#202a33;display:grid;place-items:center;color:#64717f;overflow:hidden}.folderTile img{width:100%;height:100%;object-fit:cover;display:block}.folderTile .i{width:35%;height:35%}.folderTile.emptyTile{opacity:.55}.folderCollage>div:not(.folderTile){grid-column:1/3;grid-row:1/3;display:grid;place-items:center;color:#697582}.folderCollage>div:not(.folderTile) .i{width:42px;height:42px}.folderPickerList{display:grid;gap:6px;max-height:55dvh;overflow:auto;margin-top:10px}.folderPickRow{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #26313b;border-radius:11px;background:#11171c;cursor:pointer}.folderPickRow:has(input:checked){border-color:#3b5666;background:rgba(125,211,252,.07)}.folderPickRow input{width:18px;height:18px;accent-color:var(--accent);flex:none}.folderPickRow span{min-width:0}.folderPickRow strong,.folderPickRow small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.folderPickRow strong{font-size:11px}.folderPickRow small{margin-top:2px;color:#788592;font-size:9px}.folderCard{cursor:pointer}.folderCard:hover{border-color:#33414e;background:#151c22}
+#main{touch-action:pan-y;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}html,body{touch-action:pan-y}.playerControls{min-width:0}.playerMoreBtn{display:inline-grid!important}.playerControlGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.playerControlGrid .sheetItem{justify-content:flex-start}.playerControlNow{padding:11px 12px;border:1px solid #26313b;border-radius:12px;background:#12181d;margin-bottom:8px}.playerControlNow strong,.playerControlNow span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.playerControlNow span{font-size:10px;color:#7f8b96;margin-top:3px}.playerVolume{padding:12px;border:1px solid #26313b;border-radius:12px;background:#12181d;margin-top:8px}.playerVolumeHead{display:flex;justify-content:space-between;gap:10px;font-size:11px}.playerVolumeHead span{color:#8b98a5}.playerVolume input{width:100%;accent-color:var(--accent);margin-top:9px}.controlBadge{min-width:34px;height:22px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;background:#1f2931;border:1px solid #31404d;font-size:9px;font-weight:900;color:#9daab5}.playerFxGrid{display:grid;gap:7px}.playerFxGrid .sheetItem{justify-content:flex-start}.playerFxGrid .sheetItem span{display:grid;gap:2px;text-align:left}.playerFxGrid .sheetItem small{font-size:9px;color:#7b8793}.playerFxGrid .sheetItem.selected{border-color:#385466;background:rgba(125,211,252,.08);color:var(--accent)}.lyricsMobile{font-size:13px;line-height:1.75;color:#dfe6ec;white-space:normal;padding:12px;border:1px solid #27323c;border-radius:14px;background:#10161b;min-height:90px}..folderCollage{aspect-ratio:1;border-radius:11px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;background:#1a222a;gap:2px}.folderTile{min-width:0;min-height:0;background:#202a33;display:grid;place-items:center;color:#64717f;overflow:hidden}.folderTile img{width:100%;height:100%;object-fit:cover;display:block}.folderTile .i{width:35%;height:35%}.folderTile.emptyTile{opacity:.55}.folderCollage>div:not(.folderTile){grid-column:1/3;grid-row:1/3;display:grid;place-items:center;color:#697582}.folderCollage>div:not(.folderTile) .i{width:42px;height:42px}.folderPickerList{display:grid;gap:6px;max-height:55dvh;overflow:auto;margin-top:10px}.folderPickRow{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #26313b;border-radius:11px;background:#11171c;cursor:pointer}.folderPickRow:has(input:checked){border-color:#3b5666;background:rgba(125,211,252,.07)}.folderPickRow input{width:18px;height:18px;accent-color:var(--accent);flex:none}.folderPickRow span{min-width:0}.folderPickRow strong,.folderPickRow small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.folderPickRow strong{font-size:11px}.folderPickRow small{margin-top:2px;color:#788592;font-size:9px}.folderCard{cursor:pointer}.folderCard:hover{border-color:#33414e;background:#151c22}
 </style>
 </head>
 <body>
@@ -109,7 +109,7 @@ main{padding:14px 10px calc(var(--player) + var(--nav) + 28px);max-width:980px;m
 <nav class="nav" id="nav"></nav>
 <section class="player" id="player">
   <div class="now"><div class="nowArt" id="nowArt"></div><div class="nowText"><div class="nowTitle" id="nowTitle">Nothing playing</div><div class="nowArtist" id="nowArtist">Choose a song</div></div></div>
-  <div class="playerControls"><button class="circle" id="prevBtn" aria-label="Previous"><svg class="i" viewBox="0 0 24 24"><path d="m6 5 9 7-9 7z"/><path d="M19 5v14"/></svg></button><button class="circle big" id="playBtn" aria-label="Play"><svg class="i" id="playIcon" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></svg></button><button class="circle" id="nextBtn" aria-label="Next"><svg class="i" viewBox="0 0 24 24"><path d="M18 5 7 12l11 7z"/><path d="M5 5v14"/></svg></button></div>
+  <div class="playerControls"><button class="circle" id="prevBtn" aria-label="Previous"><svg class="i" viewBox="0 0 24 24"><path d="m6 5 9 7-9 7z"/><path d="M19 5v14"/></svg></button><button class="circle big" id="playBtn" aria-label="Play"><svg class="i" id="playIcon" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></svg></button><button class="circle" id="nextBtn" aria-label="Next"><svg class="i" viewBox="0 0 24 24"><path d="M18 5 7 12l11 7z"/><path d="M5 5v14"/></svg></button><button class="circle playerMoreBtn" id="playerMoreBtn" aria-label="More playback controls" data-action="playerControls"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg></button></div>
   <div class="progress"><input id="progress" type="range" min="0" max="1000" value="0" step="1" aria-label="Track progress"></div>
 </section>
 <div class="sheetShade" id="sheetShade"><div class="sheet" id="sheet"></div></div>
@@ -603,10 +603,7 @@ function renderPlaylists(){
 function renderMore(){
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Everything that does not need a permanent tab.</p></div></div>'+
  '<div class="morePanel">'+
- '<button class="btn" data-action="openFolders">'+icon("folder")+'Folders</button>'+
- '<button class="btn" data-action="createFolder">'+icon("plus")+'New folder</button>'+
- '<button class="btn" data-action="openFolders">'+icon("folder")+'Folders</button>'+
- '<button class="btn" data-action="createFolder">'+icon("plus")+'New folder</button>'+
+ '<button class="btn" data-action="openFolders">'+icon("folder")+'Open folders</button>'+
  '<button class="btn" data-action="importFolder">'+icon("folder")+'Import folder</button>'+
  '<button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button>'+
  '<button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button>'+
@@ -807,8 +804,9 @@ function showDetail(type,id){
  }
 }
 async function playTrack(id){
- if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{};
+ if(window.LocalifyNative?.startPlaybackService)try{window.LocalifyNative.startPlaybackService()}catch{}
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
+ try{if(!storageReady)await storageWait(20000)}catch{}
  recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
  currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
@@ -830,6 +828,15 @@ function next(){
  state.queueIndex=n;playTrack(state.queue[n]);
 }
 function prev(){if(audio.currentTime>4){audio.currentTime=0;return}let n=Math.max(0,state.queueIndex-1);state.queueIndex=n;playTrack(state.queue[n])}
+let discordLastPayload="";
+function pushDiscordPresence(){
+ const t=state.tracks.find(x=>x.id===state.currentId);
+ const payload=t?{song:trackTitle(t),artist:artistText(t),album:albumName(t),coverUrl:t.cover||"",playing:!audio.paused,duration:Number(audio.duration||t.duration||0),currentTime:Number(audio.currentTime||0)}:null;
+ try{
+  const native=window.LocalifyNative;
+  if(native?.setDiscordPresence){native.setDiscordPresence(JSON.stringify(payload||{}));discordLastPayload=JSON.stringify(payload||{});}
+ }catch(e){console.warn("Discord bridge unavailable",e)}
+}
 async function updateMediaSession(t){
  if(!("mediaSession"in navigator))return;
  let artwork=[];
@@ -976,6 +983,61 @@ async function confirmDelete(){
 async function downloadSong(id){
  const t=state.tracks.find(x=>x.id===id);if(!t)return;const b=await loadAudio(t);if(!b){toast("This song's audio is missing.");return}downloadBlob(b,(artistText(t)!==NONE?artistText(t)+" - ":"")+trackTitle(t)+(t.fileName?.match(/\.[^.]+$/)?.[0]||".mp3"));toast("Song downloaded.");
 }
+
+let audioFxCtx=null,audioFxSource=null,audioFxBass=null,audioFxComp=null,audioFxMode="normal";
+async function ensureAudioFx(){
+ const AC=window.AudioContext||window.webkitAudioContext;
+ if(!AC)return false;
+ try{
+  if(!audioFxCtx){
+   audioFxCtx=new AC();
+   audioFxSource=audioFxCtx.createMediaElementSource(audio);
+   audioFxBass=audioFxCtx.createBiquadFilter();
+   audioFxBass.type="lowshelf";audioFxBass.frequency.value=140;
+   audioFxComp=audioFxCtx.createDynamicsCompressor();
+   audioFxSource.connect(audioFxBass);audioFxBass.connect(audioFxComp);audioFxComp.connect(audioFxCtx.destination);
+  }
+  if(audioFxCtx.state==="suspended")await audioFxCtx.resume();
+  return true;
+ }catch(e){console.warn("Audio effects unavailable",e);return false}
+}
+async function setAudioFx(mode){
+ audioFxMode=mode||"normal";
+ if(await ensureAudioFx()){
+  if(audioFxMode==="bass")audioFxBass.gain.value=8;
+  else if(audioFxMode==="night"){audioFxBass.gain.value=-4;audioFxComp.threshold.value=-30;audioFxComp.ratio.value=5}
+  else{audioFxBass.gain.value=0;audioFxComp.threshold.value=-24;audioFxComp.ratio.value=2}
+ }
+}
+function openCurrentLyrics(){
+ const t=state.tracks.find(x=>x.id===state.currentId);
+ if(!t){openModal('<div class="modalHead"><h2>Lyrics</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="empty"><strong>Nothing playing</strong>Start a song to view its lyrics.</div>');return}
+ const lyrics=String(t.lyrics||"").trim();
+ openModal('<div class="modalHead"><h2>'+esc(trackTitle(t))+'</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="lyricsMobile">'+(lyrics?esc(lyrics).replace(/\n/g,"<br>"):'<div class="empty"><strong>No lyrics added</strong>Edit the song to add lyrics.</div>')+'</div>');
+}
+function openPlayerControls(){
+ const t=state.tracks.find(x=>x.id===state.currentId),vol=Math.round((Number(state.settings.volume??.9))*100);
+ openSheet('<h2>Playback controls</h2>'+
+   '<div class="playerControlNow">'+(t?'<strong>'+esc(trackTitle(t))+'</strong><span>'+esc(artistText(t))+'</span>':'<strong>Nothing playing</strong><span>Choose a song</span>')+'</div>'+
+   '<div class="playerControlGrid">'+
+     '<button class="sheetItem" data-action="playerLyrics">'+icon("clock")+'<span>Lyrics</span></button>'+
+     '<button class="sheetItem" data-action="playerEffects">'+icon("settings")+'<span>Sound effects</span></button>'+
+     '<button class="sheetItem" data-action="playerShuffle"><span class="controlBadge">'+(state.settings.shuffle?"ON":"OFF")+'</span><span>Shuffle</span></button>'+
+     '<button class="sheetItem" data-action="playerRepeat"><span class="controlBadge">'+esc((state.settings.repeat||"off").toUpperCase())+'</span><span>Repeat</span></button>'+
+   '</div>'+
+   '<div class="playerVolume"><div class="playerVolumeHead"><strong>Volume</strong><span id="playerVolumeValue">'+vol+'%</span></div><input id="playerVolumeRange" type="range" min="0" max="1" step=".01" value="'+String(state.settings.volume??.9)+'"></div>');
+ $("#playerVolumeRange").oninput=e=>{const v=Number(e.target.value);state.settings.volume=v;audio.volume=v;$("#playerVolumeValue").textContent=Math.round(v*100)+"%";scheduleSave()};
+}
+function openPlayerEffects(){
+ closeSheet();
+ openModal('<div class="modalHead"><h2>Sound effects</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div>'+
+   '<div class="playerFxGrid">'+
+     '<button class="sheetItem '+(audioFxMode==="normal"?"selected":"")+'" data-action="setFx" data-fx="normal">'+icon("library")+'<span><strong>Normal</strong><small>Original sound</small></span></button>'+
+     '<button class="sheetItem '+(audioFxMode==="bass"?"selected":"")+'" data-action="setFx" data-fx="bass">'+icon("playlists")+'<span><strong>Bass boost</strong><small>More low end</small></span></button>'+
+     '<button class="sheetItem '+(audioFxMode==="night"?"selected":"")+'" data-action="setFx" data-fx="night">'+icon("clock")+'<span><strong>Night mode</strong><small>More even volume</small></span></button>'+
+   '</div>');
+}
+
 function bindEvents(){
  $("#search").addEventListener("input",e=>{state.search=e.target.value;state.view=e.target.value.trim()?"search":state.view==="search"?"home":state.view;render()});
  $("#audioPicker").addEventListener("change",e=>{const files=[...e.target.files];e.target.value="";addFiles(files)});
@@ -988,11 +1050,11 @@ function bindEvents(){
  $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
- $("#prevBtn").onclick=prev;$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};
- audio.addEventListener("play",()=>{renderPlayer();scheduleSave()});
- audio.addEventListener("pause",()=>{recordListeningProgress();renderPlayer();scheduleSave()});
+ $("#prevBtn").onclick=prev; $("#playerMoreBtn")?.addEventListener("click",()=>openPlayerControls());$("#nextBtn").onclick=next;$("#progress").oninput=e=>{if(audio.duration)audio.currentTime=(+e.target.value/1000)*audio.duration};
+ audio.addEventListener("play",()=>{renderPlayer();scheduleSave();pushDiscordPresence()});
+ audio.addEventListener("pause",()=>{recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
  audio.addEventListener("timeupdate",()=>{recordListeningProgress();renderPlayer()});
- audio.addEventListener("ended",()=>{recordListeningProgress();next()});
+ audio.addEventListener("ended",()=>{recordListeningProgress();next();pushDiscordPresence()});
 
  document.addEventListener("click",async e=>{
   unlockMobileAudio();
@@ -1038,7 +1100,13 @@ function bindEvents(){
     if(f&&confirm('Delete this folder? Your music will stay in the library.')){state.folders=state.folders.filter(x=>x.id!==id);saveMeta(true).catch(()=>{});state.view="folders";state.detail=null;render();}
     return;
   }
-  if(a==="openLibraryTools"){openLibraryTools();return}
+  if(a==="playerControls"){openPlayerControls();return}
+  if(a==="playerLyrics"){closeSheet();openCurrentLyrics();return}
+  if(a==="playerEffects"){openPlayerEffects();return}
+  if(a==="playerShuffle"){state.settings.shuffle=!state.settings.shuffle;scheduleSave();openPlayerControls();return}
+  if(a==="playerRepeat"){state.settings.repeat=state.settings.repeat==="off"?"all":state.settings.repeat==="all"?"one":"off";scheduleSave();openPlayerControls();return}
+  if(a==="setFx"){setAudioFx(b.dataset.fx);closeModal();return}
+    if(a==="openLibraryTools"){openLibraryTools();return}
   if(a==="importPreset"){closeSheet();openFilePicker($("#presetPicker"));return}
   if(a==="exportPreset"){closeSheet();exportPreset();return}
   if(a==="backupMeta"){closeSheet();backupMeta();return}
@@ -1107,7 +1175,7 @@ async function boot(){
  }catch(e){console.error("boot storage",e)}
 }
 if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{})}
-boot();
+boot();setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},1200);
 })();
 </script>
 </body>

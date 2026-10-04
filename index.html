@@ -609,17 +609,12 @@ function renderPlaylists(){
  (shown.length?'<div class="grid">'+shown.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Tap + to create one.</div>');
 }
 function renderMore(){
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Everything that does not need a permanent tab.</p></div></div>'+
- '<div class="morePanel">'+
- '<button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button>'+
- '<button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button>'+
- '<button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button>'+
- '<button class="btn" data-action="backupMeta">'+icon("shield")+'Export metadata backup</button>'+
- '<button class="btn" data-action="storageInfo">'+icon("settings")+'Storage & safety</button>'+
- '<button class="btn danger" data-action="deleteLibrary">'+icon("trash")+'Delete library</button>'+
- '</div>'+
- '<div class="section"><div class="notice">Localify Mobile requests persistent browser storage, keeps a metadata safety backup, and stores audio outside the app UI so the catalog does not have to load every song into memory at startup.</div></div>';
+ $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Import, export, storage and library management.</p></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Music</span></div><div class="morePanel"><button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="morePanel"><button class="btn danger" data-action="deleteLibrary">'+icon("trash")+'Delete library</button></div></div>';
 }
+
 function render(){
  renderProfileButton();
  $("#nav").innerHTML=navHtml();
@@ -1169,7 +1164,7 @@ async function boot(){
     await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
     await persistRequest();
 
-  busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
+  busyUpdate("Loading save","Restoring your library…",55);busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
   normalizeStats();normalizeProfile();
   if(!had)await saveMeta(true);
   else{

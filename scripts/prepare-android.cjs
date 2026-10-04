@@ -80,7 +80,7 @@ if(!source.includes("LocalifyNative")){
 "  },\"LocalifyNative\");\n"+
 " }\n"+
 " @Override protected void onCreate(android.os.Bundle savedInstanceState){super.onCreate(savedInstanceState);attachLocalifyPlaybackBridge();if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(\"android.permission.POST_NOTIFICATIONS\")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{\"android.permission.POST_NOTIFICATIONS\"},701);}\n"+
-" @Override protected void onDestroy(){abandonLocalifyAudioFocus();super.onDestroy();}\n";
+" @Override public void onDestroy(){abandonLocalifyAudioFocus();super.onDestroy();}\n";
   activity=activity.slice(0,open+1)+bridge+activity.slice(open+1);
   fs.writeFileSync(mainActivity,activity,"utf8");
 }

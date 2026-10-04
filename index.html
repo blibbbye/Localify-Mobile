@@ -127,13 +127,13 @@ main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px
 "use strict";
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const NONE="None";
-const DB_NAME="localify-mobile-v2",DB_VER=2;
+const DB_NAME="localify-mobile-v2",DB_VER=4;
 const META_KEY="localify-mobile-v2-meta";
 const BACKUP_KEY="localify-mobile-v2-backup";
 const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/covers.json";
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
-let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
+let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null,storageMode="idb",storageWriteLock=Promise.resolve();
 let state={version:3,view:"home",search:"",searchFilter:"all",tracks:[],albums:[],artists:[],playlists:[],folders:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{name:"Localify User",avatar:null},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
@@ -216,8 +216,18 @@ function openFilePicker(input){
 function openDB(){
  return new Promise((resolve,reject)=>{
   const r=indexedDB.open(DB_NAME,DB_VER);
-  r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains("meta"))d.createObjectStore("meta");if(!d.objectStoreNames.contains("files"))d.createObjectStore("files");if(!d.objectStoreNames.contains("audioChunks"))d.createObjectStore("audioChunks");if(!d.objectStoreNames.contains("audioMeta"))d.createObjectStore("audioMeta")};
-  r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error||new Error("IndexedDB unavailable"));
+  r.onupgradeneeded=e=>{
+   const d=e.target.result;
+   if(!d.objectStoreNames.contains("meta"))d.createObjectStore("meta");
+   if(!d.objectStoreNames.contains("files"))d.createObjectStore("files");
+   if(!d.objectStoreNames.contains("audioChunks"))d.createObjectStore("audioChunks");
+   if(!d.objectStoreNames.contains("audioMeta"))d.createObjectStore("audioMeta");
+   if(!d.objectStoreNames.contains("audioChunksV4"))d.createObjectStore("audioChunksV4");
+   if(!d.objectStoreNames.contains("audioMetaV4"))d.createObjectStore("audioMetaV4");
+  };
+  r.onblocked=()=>console.warn("Localify storage upgrade is blocked by another tab.");
+  r.onsuccess=()=>{db=r.result;db.onversionchange=()=>{try{db.close()}catch{}};resolve(db)};
+  r.onerror=()=>reject(r.error||new Error("IndexedDB unavailable"));
  });
 }
 function idbGet(store,key){return new Promise((res,rej)=>{try{const r=db.transaction(store,"readonly").objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}

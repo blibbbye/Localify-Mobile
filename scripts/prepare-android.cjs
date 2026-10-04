@@ -81,11 +81,13 @@ public final class LocalifyPlaybackService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
+            String action = intent.getAction();
             String t = intent.getStringExtra("title");
             String a = intent.getStringExtra("artist");
             if (t != null && !t.isEmpty()) title = t;
             if (a != null && !a.isEmpty()) artist = a;
             if (intent.hasExtra("playing")) playing = intent.getBooleanExtra("playing", playing);
+            if (action != null && !action.isEmpty()) dispatchAction(action);
         }
         startForeground(NOTIFICATION_ID, buildNotification());
         updateSession();

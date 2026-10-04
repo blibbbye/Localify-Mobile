@@ -62,7 +62,7 @@ main{touch-action:pan-y;padding:14px 10px calc(var(--player) + var(--nav) + 28px
 .hero{padding:18px;border:1px solid #27313b;border-radius:18px;background:linear-gradient(145deg,#171e25,#0f1419);margin-bottom:18px}
 .heroKicker{font-size:9px;font-weight:950;letter-spacing:.12em;color:#72808d}.hero h2{margin:8px 0;font-size:37px;line-height:1.02;letter-spacing:-2px}.hero p{margin:0;color:#9aa5b1;font-size:12px;line-height:1.55}
 .actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}.actions .btn{flex:1 1 145px}
-.section{margin-top:20px}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.sectionHead strong{font-size:17px}.sectionHead span{font-size:10px;color:#768391}.homeSectionActions{display:flex;align-items:center;gap:6px}.homeMore{background:transparent;color:#7f8c99;font-size:11px;font-weight:850;padding:5px 4px;border-radius:8px}.homeMore:hover{color:#fff;background:#171d23}.homeSectionActions .btn.small{min-height:30px;width:30px;padding:0;border-radius:9px}.homeSectionActions .btn.small .i{width:16px;height:16px}
+.section{margin-top:20px}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}.sectionHead strong{font-size:17px}.sectionHead span{font-size:10px;color:#768391}.homeSectionActions{display:flex;align-items:center;gap:6px}.homeMore{min-height:30px;padding:0 11px;border:1px solid #303a45;border-radius:9px;background:#151b21;color:#c7d0d8;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center}.homeMore:hover{background:#1c242c;border-color:#42505d;color:#fff}.homeSectionActions .btn.small{min-height:30px;width:30px;padding:0;border-radius:9px}.homeSectionActions .btn.small .i{width:16px;height:16px}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .card{padding:8px;min-width:0;border:1px solid #202830;background:#11161b;border-radius:15px;overflow:hidden}.art{aspect-ratio:1;border-radius:11px;overflow:hidden;background:#202832;display:grid;place-items:center}.art img{width:100%;height:100%;object-fit:cover}.art .i{width:42px;height:42px;color:#64717f}.round .art{border-radius:50%}
 .title{margin-top:8px;font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sub{margin-top:3px;font-size:10px;color:#7e8996;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -553,9 +553,9 @@ function playlistCard(p){
  return '<div class="card" data-action="openPlaylist" data-id="'+esc(p.id)+'"><div class="art">'+(p.cover?'<img src="'+esc(p.cover)+'" alt="">':icon("playlists"))+'</div><div class="title">'+esc(p.name)+'</div><div class="sub">'+ts.length+" songs • "+totalLabel(ts)+'</div></div>';
 }
 function homeSectionHead(title,count,view,createAction,showCreate){
- const action=createAction?'<button class="btn primary small icon" data-action="'+createAction+'" aria-label="Create '+esc(title.slice(0,-1))+'">'+icon("plus")+'</button>':"";
- const more=view?'<button class="homeMore" data-view="'+view+'">More</button>':"";
- return '<div class="sectionHead"><strong>'+title+'</strong><div class="homeSectionActions">'+action+more+'</div></div>';
+ const more=view?'<button type="button" class="homeMore" data-view="'+view+'">More</button>':"";
+ const action=createAction?'<button type="button" class="btn primary small icon" data-action="'+createAction+'" aria-label="Create '+esc(title.slice(0,-1))+'">'+icon("plus")+'</button>':"";
+ return '<div class="sectionHead"><strong>'+title+'</strong><div class="homeSectionActions">'+more+action+'</div></div>';
 }
 function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,4);
@@ -838,13 +838,36 @@ function playList(ts,start){
  state.queue=order;state.queueIndex=Math.min(Math.max(0,start||0),order.length-1);playTrack(state.queue[state.queueIndex]);
 }
 function shuffle(a){const out=[...a];for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
+function ensurePlayerQueue(){
+ if(!state.tracks.length)return false;
+ state.queue=Array.isArray(state.queue)?state.queue.filter(id=>state.tracks.some(t=>t.id===id)):[];
+ if(!state.queue.length){
+  state.queue=state.tracks.map(t=>t.id);
+ }
+ if(state.currentId){
+  const idx=state.queue.indexOf(state.currentId);
+  if(idx>=0)state.queueIndex=idx;
+  else{state.queue.splice(Math.max(0,state.queueIndex+1),0,state.currentId);state.queueIndex=state.queue.indexOf(state.currentId);}
+ }
+ if(!Number.isInteger(state.queueIndex)||state.queueIndex<0)state.queueIndex=0;
+ return !!state.queue.length;
+}
 function next(){
  if(state.settings.repeat==="one"){audio.currentTime=0;audio.play().catch(()=>{});return}
- if(!state.queue.length)return;
- let n=state.queueIndex+1;if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
- state.queueIndex=n;playTrack(state.queue[n]);
+ if(!ensurePlayerQueue())return;
+ let n=state.queueIndex+1;
+ if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
+ state.queueIndex=n;
+ playTrack(state.queue[n]);
 }
-function prev(){if(audio.currentTime>4){audio.currentTime=0;return}let n=Math.max(0,state.queueIndex-1);state.queueIndex=n;playTrack(state.queue[n])}
+function prev(){
+ if(audio.currentTime>4){audio.currentTime=0;return}
+ if(!ensurePlayerQueue())return;
+ let n=state.queueIndex-1;
+ if(n<0)n=state.settings.repeat==="all"?state.queue.length-1:0;
+ state.queueIndex=n;
+ playTrack(state.queue[n]);
+}
 let discordLastPayload="";
 function pushDiscordPresence(){
  const t=state.tracks.find(x=>x.id===state.currentId);
@@ -1099,7 +1122,7 @@ function bindEvents(){
 });
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
- $("#prevBtn").onclick=prev; $("#playerMoreBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openPlayerControls()});$("#nextBtn").onclick=next;const seekProgress=e=>{if(audio.duration){audio.currentTime=(+e.target.value/1000)*audio.duration;updateMediaSessionPosition();}};$("#progress").oninput=seekProgress;$("#progress").onchange=seekProgress;
+ $("#prevBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();prev()}; $("#playerMoreBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openPlayerControls()}); $("#nextBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();next()};const seekProgress=e=>{if(audio.duration){audio.currentTime=(+e.target.value/1000)*audio.duration;updateMediaSessionPosition();}};$("#progress").oninput=seekProgress;$("#progress").onchange=seekProgress;
  audio.addEventListener("play",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="playing"}catch{};renderPlayer();scheduleSave();pushDiscordPresence()});
  audio.addEventListener("pause",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
  audio.addEventListener("timeupdate",()=>{recordListeningProgress();updatePlayerProgressOnly();updateMediaSessionPosition();});

@@ -1456,42 +1456,53 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
-  // Reset transient UI-operation state on every page load.
   busy=false;operationController=null;saveTimer=0;
   $("#busyShade").classList.remove("open");
   try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
   busyShow("Loading save","Loading your Localify library…");
-  busyUpdate("Loading save","Preparing local storage…",8);
-  storageInitPromise=(async()=>{
-   try{
-    await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))]);
-    await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
-    await persistRequest();
-
-  busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
-  normalizeStats();normalizeProfile();
-  if(!had)await saveMeta(true);
-  else{
-   try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}
+  busyUpdate("Loading save","Opening local saved storage…",10);
+  try{
+    if(!("indexedDB" in window)||!indexedDB){throw new Error("IndexedDB is unavailable in this browser/webview.");}
+    storageInitPromise=(async()=>{
+      const dbResult=await Promise.race([
+        openDB(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),10000))
+      ]);
+      // IndexedDB is the required save store. Mark it ready immediately after it opens;
+      // optional persistent/OPFS features must never make the whole save system appear broken.
+      db=dbResult;storageReady=true;
+      busyUpdate("Loading save","Enabling persistent storage…",30);
+      await Promise.race([persistRequest(),new Promise(resolve=>setTimeout(resolve,1500))]).catch(()=>{});
+      await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,2000))]).catch(()=>{});
+      busyUpdate("Loading save","Restoring your library…",58);
+      try{
+        const had=await restore();
+        normalizeStats();normalizeProfile();
+        if(!had){try{await saveMeta(true)}catch(e){console.warn("initial metadata save failed",e)}}
+        else{try{await saveMeta(false)}catch(e){console.warn("metadata refresh failed",e)}}
+      }catch(e){
+        // A bad/old metadata record should not disable storage itself.
+        console.warn("library restore failed; starting with current library state",e);
+        normalizeStats();normalizeProfile();
+        try{await saveMeta(true)}catch(saveErr){console.warn("fresh metadata save failed",saveErr)}
+      }
+      busyUpdate("Loading save","Finishing library setup…",90);
+      void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
+      if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
+      busyUpdate("Loading save","Ready.",100);
+      return true;
+    })();
+    await storageInitPromise;
+    toast("Saved storage ready.");
+  }catch(e){
+    console.error("storage boot",e);
+    storageReady=false;
+    toast("Saved storage is unavailable in this browser. Try opening Localify Mobile in Chrome/Edge instead of an in-app browser.");
+  }finally{
+    busyHide();
   }
-  busyUpdate("Loading save","Finishing library setup…",88);storageReady=true;
-  void loadCoverMap().then(()=>bindCovers()).catch(()=>{});
-  if(state.currentId&&state.tracks.some(t=>t.id===state.currentId))renderPlayer();
-  busyUpdate("Loading save","Ready.",100);return had;
- }catch(e){
-  console.error("storage boot",e);
-  storageReady=false;
-  return false;
- }
- })();
- try{
-   const had=await storageInitPromise;
-   if(had)toast("Library restored.");
-   else if(storageReady)toast("Localify Mobile ready.");
-   else toast("Localify is running, but saved storage is unavailable.");
-   busyHide();
- }catch(e){console.error("boot storage",e)}
 }
+
 if("serviceWorker" in navigator){
  navigator.serviceWorker.register("./sw.js?v=20261004-hotfix4",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
 }

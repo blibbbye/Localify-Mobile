@@ -243,7 +243,7 @@ if(!source.includes('"LocalifyNative"')){
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         abandonLocalifyAudioFocus();
         super.onDestroy();
     }

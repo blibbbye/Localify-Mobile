@@ -965,36 +965,93 @@ async function importPreset(file){
   const index=await readZipIndex(file),mf=index.get("library.json");
   if(!mf)throw new Error("This file does not contain Localify library.json.");
   const manifest=sanitizeManifest(JSON.parse(await (await zipEntryBlob(file,mf)).text()));
-  if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length)throw new Error("This preset does not contain supported Localify data.");
-  manifest.artists.forEach(a=>{if(!a.id)a.id=uid();if(!state.artists.some(x=>x.id===a.id))state.artists.push(a)});
-  manifest.albums.forEach(a=>{if(!a.id)a.id=uid();if(!state.albums.some(x=>x.id===a.id))state.albums.push(a)});
-  let done=0;
-  for(const src of manifest.tracks){
-   busyCheck();done++;
-   const title=src.title||src.fileName||"song";
-   busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
-   const t=JSON.parse(JSON.stringify(src)),sourceId=t.id||uid();
-   t.id=state.tracks.some(x=>x.id===sourceId)?uid():sourceId;
-   const e=t.audioFile?index.get(t.audioFile):null;
-   if(e){const blob=await zipEntryBlob(file,e);await saveAudio(t,blob)}
-   else if(t.hasAudio)throw new Error("Missing audio for "+title);
-   delete t._blob;t._blob=null;
-   state.tracks.push(t);
-   if(done%2===0)await saveMeta(false);
-   await new Promise(resolve=>setTimeout(resolve,0));
+  if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length&&!manifest.folders.length)throw new Error("This preset does not contain supported Localify data.");
+
+  // Remap imported IDs so albums, tracks, playlists and folders keep their
+  // relationships even when this device already has a library with overlapping IDs.
+  const artistIdMap=new Map(),albumIdMap=new Map(),trackIdMap=new Map(),playlistIdMap=new Map();
+
+  for(const src of manifest.artists){
+    const a=JSON.parse(JSON.stringify(src));
+    const oldId=a.id||uid();
+    const existing=state.artists.find(x=>String(x.name||"").trim().toLowerCase()===String(a.name||"").trim().toLowerCase());
+    if(existing){artistIdMap.set(oldId,existing.id);continue}
+    a.id=state.artists.some(x=>x.id===a.id)?uid():oldId;
+    state.artists.push(a);artistIdMap.set(oldId,a.id);
   }
+
+  for(const src of manifest.albums){
+    const a=JSON.parse(JSON.stringify(src)),oldId=a.id||uid();
+    const mappedArtists=(Array.isArray(src.artistIds)?src.artistIds:[])
+      .map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
+    if(mappedArtists.length){
+      a.artistIds=[...new Set(mappedArtists)];
+      a.artistNames=a.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ");
+      a.artist=a.artistNames;
+    }
+    const existing=state.albums.find(x=>String(x.title||"").trim().toLowerCase()===String(a.title||"").trim().toLowerCase() &&
+      (!a.artistIds?.length || (Array.isArray(x.artistIds)&&a.artistIds.every(id=>x.artistIds.includes(id)))));
+    if(existing){albumIdMap.set(oldId,existing.id);continue}
+    a.id=state.albums.some(x=>x.id===a.id)?uid():oldId;
+    state.albums.push(a);albumIdMap.set(oldId,a.id);
+  }
+
+  let done=0;
+  for(const src0 of manifest.tracks){
+    busyCheck();done++;
+    const title=src0.title||src0.fileName||"song";
+    busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
+    const t=JSON.parse(JSON.stringify(src0)),sourceId=t.id||uid();
+    const originalId=sourceId;
+    t.id=state.tracks.some(x=>x.id===sourceId)?uid():sourceId;
+    const mappedArtists=(Array.isArray(src0.artistIds)?src0.artistIds:[])
+      .map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
+    if(mappedArtists.length){
+      t.artistIds=[...new Set(mappedArtists)];
+      t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ")||t.artist||NONE;
+    }else if(src0.artist){
+      const names=String(src0.artist).split(/[,;]\s*/).map(x=>x.trim()).filter(Boolean);
+      const ids=names.map(n=>state.artists.find(a=>String(a.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);
+      if(ids.length){t.artistIds=[...new Set(ids)];t.artist=t.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ");}
+    }
+    t.albumId=src0.albumId?(albumIdMap.get(src0.albumId)||null):null;
+    if(t.albumId){const a=state.albums.find(x=>x.id===t.albumId);if(a){t.album=a.title;t.albumArtist=a.artistNames||a.artist||t.albumArtist||NONE;}}
+    if(Array.isArray(src0.albumArtistIds)){
+      const mappedAlbumArtists=src0.albumArtistIds.map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
+      t.albumArtistIds=[...new Set(mappedAlbumArtists)];
+    }
+    const e=t.audioFile?index.get(t.audioFile):null;
+    if(e){const blob=await zipEntryBlob(file,e);await saveAudio(t,blob)}
+    else if(t.hasAudio)throw new Error("Missing audio for "+title);
+    delete t._blob;t._blob=null;
+    state.tracks.push(t);
+    trackIdMap.set(originalId,t.id);
+    if(done%2===0)await saveMeta(false);
+    await new Promise(resolve=>setTimeout(resolve,0));
+  }
+
   busyCheck();
-  manifest.playlists.forEach(p=>{const x=JSON.parse(JSON.stringify(p));if(!x.id)x.id=uid();if(!state.playlists.some(v=>v.id===x.id))state.playlists.push(x)});
+  for(const src of manifest.playlists){
+    const x=JSON.parse(JSON.stringify(src)),oldId=x.id||uid();
+    x.id=state.playlists.some(v=>v.id===x.id)?uid():oldId;
+    x.trackIds=(Array.isArray(src.trackIds)?src.trackIds:[]).map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
+    const existing=state.playlists.find(v=>String(v.name||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase());
+    if(existing){playlistIdMap.set(oldId,existing.id);if(x.trackIds.length)existing.trackIds=[...new Set([...(existing.trackIds||[]),...x.trackIds])];}
+    else{state.playlists.push(x);playlistIdMap.set(oldId,x.id);}
+  }
+
   if(Array.isArray(manifest.folders))manifest.folders.forEach(f=>{
-   const x=JSON.parse(JSON.stringify(f));if(!x.id)x.id=uid();ensureFolderArrays(x);
-   x.albumIds=x.albumIds.filter(id=>state.albums.some(a=>a.id===id));
-   x.trackIds=x.trackIds.filter(id=>state.tracks.some(t=>t.id===id));
-   x.artistIds=x.artistIds.filter(id=>state.artists.some(a=>a.id===id));
-   x.playlistIds=x.playlistIds.filter(id=>state.playlists.some(p=>p.id===id));
-   if(!state.folders.some(v=>v.id===x.id))state.folders.push(x);
+    const x=JSON.parse(JSON.stringify(f)),oldId=x.id||uid();
+    x.id=state.folders.some(v=>v.id===x.id)?uid():oldId;ensureFolderArrays(x);
+    x.albumIds=x.albumIds.map(id=>albumIdMap.get(id)||id).filter(id=>state.albums.some(a=>a.id===id));
+    x.trackIds=x.trackIds.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id));
+    x.artistIds=x.artistIds.map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(a=>a.id===id));
+    x.playlistIds=x.playlistIds.map(id=>playlistIdMap.get(id)||id).filter(id=>state.playlists.some(p=>p.id===id));
+    if(!state.folders.some(v=>String(v.name||"").trim().toLowerCase()===String(x.name||"").trim().toLowerCase()))state.folders.push(x);
   });
-  if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked])];
-  if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent,...state.recent])].slice(0,100);
+
+  if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id))])];
+  if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent.map(id=>trackIdMap.get(id)||id).filter(id=>state.tracks.some(t=>t.id===id)),...state.recent])].slice(0,100);
   await saveMeta(true);busyUpdate("Importing preset","Finished. Updating your library…",100);render();toast("Preset imported successfully.");
  }catch(e){
   console.error("Localify Mobile preset import failed",e);

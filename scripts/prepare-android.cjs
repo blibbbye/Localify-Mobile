@@ -50,7 +50,7 @@ if(!manifest.includes("LocalifyPlaybackService")){
 fs.writeFileSync(manifestPath,manifest,"utf8");
 if(!source.includes("LocalifyNative")){
   let activity=source;
-  activity=activity.replace(/(package [^;]+;\n)/,"$1\nimport android.content.Intent;\nimport android.os.Build;\nimport android.webkit.JavascriptInterface;\n");
+  activity=activity.replace(/(package [^;]+;\n)/,"$1\nimport android.content.Intent;\nimport android.os.Build;\nimport android.webkit.JavascriptInterface;\nimport android.media.AudioManager;\nimport android.media.AudioAttributes;\nimport android.media.AudioFocusRequest;\n");
   const open=activity.indexOf("{",activity.indexOf("class MainActivity"));
   if(open<0) throw new Error("MainActivity class body not found.");
   const bridge=

@@ -323,7 +323,7 @@ async function idbDeleteAudioV4(id){
    tx=db.transaction("audioChunksV4","readwrite");
    const store=tx.objectStore("audioChunksV4");
    const req=store.openCursor(IDBKeyRange.bound(prefix,prefix+"\\uffff"));
-   req.onsuccess=e=>{const cur=e.target.result;if(!cur)return cur.delete(),cur.continue()};
+   req.onsuccess=e=>{const cur=e.target.result;if(!cur)return;cur.delete();cur.continue()};
    req.onerror=()=>reject(req.error||new Error("Could not clear saved audio."));
    tx.oncomplete=()=>resolve();
    tx.onerror=()=>reject(tx.error||new Error("Could not clear saved audio."));

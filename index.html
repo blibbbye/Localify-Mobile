@@ -963,14 +963,18 @@ function editorArtistPicker(obj){
  const rows=state.artists.map(a=>'<label class="artistChoice"><input type="checkbox" data-editor-artist value="'+esc(a.id)+'" '+(selected.has(a.id)?"checked":"")+'><span class="artistChoiceName">'+esc(a.name)+'</span></label>').join("");
  return '<div class="field"><label>Select artists</label><div class="artistPickerMenu" style="display:grid;position:static;max-height:190px;overflow:auto">'+(rows||'<div class="empty">Create an artist first, then select them here.</div>')+'</div></div>';
 }
+function editorCoverField(value){
+ const v=value||"";
+ return '<div class="field"><label>Cover / picture</label><div class="coverEditRow"><div class="coverEditPreview" id="editorCoverPreview">'+(v?'<img src="'+esc(v)+'" alt="">':icon("library"))+'</div><div><button type="button" class="btn" data-action="chooseEditorCover">'+icon("upload")+'Choose image</button> <button type="button" class="btn" data-action="clearEditorCover">Remove</button><div class="loginHint">The image is saved with this item.</div></div></div></div>';
+}
 function createEditor(kind,obj){
  const isSong=kind==="song",isAlbum=kind==="album",isArtist=kind==="artist",isPlaylist=kind==="playlist";
  const x=obj||{};
- window.__editorReturnDetail=state.detail?{type:state.detail.type,id:state.detail.id}:null;
+ window.__editorReturnDetail=state.detail?{type:state.detail.type,id:state.detail.id}:null;window.__editorPendingCover=x.cover||x.image||null;
  let extra="";
- if(isSong)extra='<div class="field"><label>Album</label><select id="fAlbum"><option value="">None</option>'+state.albums.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===x.albumId?"selected":"")+'>'+esc(a.title)+'</option>').join("")+'</select></div>'+editorArtistPicker(x)+'<div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div><div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Lyrics</label><textarea id="fLyrics">'+esc(x.lyrics||"")+'</textarea></div>';
- else if(isAlbum)extra=editorArtistPicker(x)+'<div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div>';
- else if(isArtist)extra='<div class="field"><label>Genres</label><input id="fGenres" value="'+esc((x.genres||[]).join(", "))+'" placeholder="Hip-Hop, R&B"></div><div class="field"><label>Bio</label><textarea id="fBio">'+esc(x.bio||"")+'</textarea></div>';
+ if(isSong)extra=editorCoverField(x.cover)+'<div class="field"><label>Album</label><select id="fAlbum"><option value="">None</option>'+state.albums.map(a=>'<option value="'+esc(a.id)+'" '+(a.id===x.albumId?"selected":"")+'>'+esc(a.title)+'</option>').join("")+'</select></div>'+editorArtistPicker(x)+'<div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div><div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Lyrics</label><textarea id="fLyrics">'+esc(x.lyrics||"")+'</textarea></div>';
+ else if(isAlbum)extra=editorCoverField(x.cover)+editorArtistPicker(x)+'<div class="field"><label>Year</label><input id="fYear" value="'+esc(x.year||"")+'"></div><div class="field"><label>Genre</label><input id="fGenre" value="'+esc(x.genre||"")+'"></div>';
+ else if(isArtist)extra=editorCoverField(x.image)+'<div class="field"><label>Genres</label><input id="fGenres" value="'+esc((x.genres||[]).join(", "))+'" placeholder="Hip-Hop, R&B"></div><div class="field"><label>Bio</label><textarea id="fBio">'+esc(x.bio||"")+'</textarea></div>';
  else extra='<div class="field"><label>Description</label><textarea id="fDescription">'+esc(x.description||"")+'</textarea></div>';
  const title=isSong?(x.id?"Edit song":"New song"):isAlbum?(x.id?"Edit album":"Create album"):isArtist?(x.id?"Edit artist":"Create artist"):(x.id?"Edit playlist":"Create playlist");
  openModal('<div class="modalHead"><h2>'+title+'</h2><button class="circle" data-action="closeModal" aria-label="Close">'+icon("close")+'</button></div><div class="form"><div class="field"><label>'+((isSong||isAlbum)?"Title":"Name")+'</label><input id="fTitle" value="'+esc(x.title||x.name||"")+'"></div>'+extra+'</div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveEditor" data-kind="'+kind+'" data-id="'+esc(x.id||"")+'">Save</button></div>');
@@ -981,6 +985,7 @@ async function saveEditor(kind,id){
  if(kind==="song"){
   const t=existing||{id:uid(),title:"",artistIds:[],albumId:null,duration:0,fileName:"",cover:null,lyrics:""};
   t.title=title;
+  if(window.__editorPendingCover!==undefined)t.cover=window.__editorPendingCover||null;
   const artistIds=$$("[data-editor-artist]:checked").map(x=>x.value);
   t.artistIds=[...new Set(artistIds)];
   t.artist=t.artistIds.map(id=>state.artists.find(a=>a.id===id)?.name).filter(Boolean).join(", ")||NONE;
@@ -990,18 +995,19 @@ async function saveEditor(kind,id){
  }else if(kind==="album"){
   const a=existing||{id:uid(),title:"",artistIds:[],cover:null,year:"",genre:""};
   a.title=title;
+  if(window.__editorPendingCover!==undefined)a.cover=window.__editorPendingCover||null;
   a.artistIds=[...new Set($$("[data-editor-artist]:checked").map(x=>x.value))];
   a.artistNames=a.artistIds.map(id=>state.artists.find(v=>v.id===id)?.name).filter(Boolean).join(", ");
   a.artist=a.artistNames||NONE;
   a.year=$("#fYear")?.value||"";a.genre=$("#fGenre")?.value||"";
   if(!existing)state.albums.push(a);
  }else if(kind==="artist"){
-  const a=existing||{id:uid(),name:"",image:null,genres:[],bio:""};a.name=title;a.genres=($("#fGenres")?.value||"").split(",").map(x=>x.trim()).filter(Boolean);a.bio=$("#fBio")?.value||"";if(!existing)state.artists.push(a);
+  const a=existing||{id:uid(),name:"",image:null,genres:[],bio:""};if(window.__editorPendingCover!==undefined)a.image=window.__editorPendingCover||null;a.name=title;a.genres=($("#fGenres")?.value||"").split(",").map(x=>x.trim()).filter(Boolean);a.bio=$("#fBio")?.value||"";if(!existing)state.artists.push(a);
  }else{
   const p=existing||{id:uid(),name:"",description:"",trackIds:[]};p.name=title;p.description=$("#fDescription")?.value||"";if(!existing)state.playlists.push(p);
  }
  const returnDetail=window.__editorReturnDetail||null;delete window.__editorReturnDetail;
- closeModal();closeSheet();
+ window.__editorPendingCover=undefined;closeModal();closeSheet();
  try{await ensureStorageForAction();await saveMeta(true)}catch(e){console.warn(e)}
  if(returnDetail?.type==="folder")showFolder(returnDetail.id);
  else if(returnDetail?.type)showDetail(returnDetail.type,returnDetail.id);
@@ -1530,7 +1536,7 @@ function bindEvents(){
   const root=(files[0]?.webkitRelativePath||"").split("/")[0]||"Imported folder";
   addFiles(files,{folderName:root,directoryImport:true});
  });
- $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{window.__pendingProfileAvatar=await fileToDataUrl(f);const el=$("#profilePreview");if(el)el.innerHTML='<img src="'+esc(window.__pendingProfileAvatar)+'" alt="">';window.__editingProfilePicture=false;}catch(err){window.__editingProfilePicture=false;toast("Could not read that profile picture.");}return}window.__pickedImage=f;toast("Image selected.");});
+ $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{window.__pendingProfileAvatar=await fileToDataUrl(f);const el=$("#profilePreview");if(el)el.innerHTML='<img src="'+esc(window.__pendingProfileAvatar)+'" alt="">';window.__editingProfilePicture=false;}catch(err){window.__editingProfilePicture=false;toast("Could not read that profile picture.");}return}if(window.__editingEntityCover){try{window.__editorPendingCover=await fileToDataUrl(f);const el=$("#editorCoverPreview");if(el)el.innerHTML='<img src="'+esc(window.__editorPendingCover)+'" alt="">';window.__editingEntityCover=false;}catch(err){window.__editingEntityCover=false;toast("Could not read that image.");}return}window.__pickedImage=f;toast("Image selected.");});
  $("#presetPicker").addEventListener("change",async e=>{
  const input=e.target,f=input.files?.[0]||null;
  input.value="";
@@ -1570,6 +1576,8 @@ function bindEvents(){
   if(a==="closeModal"){closeModal();return}
   if(a==="editProfile"){closeSheet();editProfile();return}
   if(a==="changeProfilePicture"){window.__editingProfilePicture=true;openFilePicker($("#imagePicker"));return}
+  if(a==="chooseEditorCover"){window.__editingEntityCover=true;openFilePicker($("#imagePicker"));return}
+  if(a==="clearEditorCover"){window.__editorPendingCover=null;const el=$("#editorCoverPreview");if(el)el.innerHTML=icon("library");return}
   if(a==="saveProfile"){saveProfile();return}
   if(a==="addSongs"){closeSheet();openFilePicker($("#audioPicker"));return}
   if(a==="importFolder"){closeSheet();openFilePicker($("#folderPicker"));return}

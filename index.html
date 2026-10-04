@@ -259,7 +259,7 @@ async function ensureStorageForAction(){
 async function persistRequest(){
  try{if(navigator.storage?.persist)await navigator.storage.persist()}catch(e){console.warn("Persistent storage request failed",e)}
 }
-async async function initOPFS(){
+async function initOPFS(){
  try{
   if(navigator.storage?.getDirectory){
    rootDir=await navigator.storage.getDirectory();

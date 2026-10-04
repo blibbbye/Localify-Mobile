@@ -409,52 +409,44 @@ async function saveAudio(t,blob){
  }
 }
 async function saveZipAudio(t,file,e){
+ const expected=Number(e.uncompSize)||0;
+ const verifyOPFS=async()=>{
+  try{
+   if(!rootDir)await initOPFS();
+   if(!rootDir)return false;
+   const f=await opfsFile(t.id,false);
+   return !!(f&&f.size&&(expected<=0||f.size>=expected));
+  }catch{return false}
+ };
  if(externalStorageMode&&externalDir){
-  await writeZipEntryToExternal(t.id,file,e);t.storage="external";t._blob=null;return;
+  await writeZipEntryToExternal(t.id,file,e);
+  const f=await externalAudioFile(t.id).catch(()=>null);
+  if(!f?.size||(expected&&f.size<expected))throw new Error("Saved external audio file is incomplete.");
+  t.storage="external";t._blob=null;return;
  }
  if(rootDir){
-  try{await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}catch(err){
-   console.warn("OPFS ZIP write failed",err);
+  try{
+   await writeZipEntryToOPFS(t.id,file,e);
+   if(await verifyOPFS()){t.storage="opfs";t._blob=null;return}
+   throw new Error("OPFS verification failed");
+  }catch(err){
+   console.warn("OPFS ZIP write failed; falling back to IndexedDB chunks",err);
    try{
-    await initOPFS();
-    if(rootDir){await writeZipEntryToOPFS(t.id,file,e);t.storage="opfs";t._blob=null;return}
-   }catch(retryError){console.warn("OPFS ZIP retry failed",retryError)}
+    const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});
+    try{await dir.removeEntry(t.id)}catch{}
+   }catch{}
+   try{await initOPFS()}catch{}
   }
  }
  try{
   const stream=await zipEntryStream(file,e);
   await writeStreamToIDBChunks(t.id,stream,"audio/*");
-  t.storage="idb-chunks";t._blob=null;
+  const meta=await idbGet("audioMeta",t.id),first=await idbGet("audioChunks",[t.id,0]);
+  if(!meta?.chunks||!first||(expected&&Number(meta.size||0)<expected))throw new Error("IndexedDB verification failed");
+  t.storage="idb-chunks";t._blob=null;return;
  }catch(err){
-  throw new Error("Localify could not save this preset audio file ("+formatBytes(Number(e.uncompSize)||0)+"). The browser may be out of site storage. Completed songs are kept.");
+  throw new Error("Could not save the audio for "+(t.title||t.fileName||"this song")+". "+formatBytes(expected)+" could not be stored safely.");
  }
-}
-async function loadAudio(t){
- if(t._blob&&t._blob.size)return t._blob;
- if(t.storage==="external"&&externalDir){
-  try{const f=await externalAudioFile(t.id);if(f?.size){t._blob=f;return f}}catch(e){console.warn("External audio read failed",e)}
- }
- if(t.storage==="opfs"){
-  try{
-   if(!rootDir)await initOPFS();
-   if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
-  }catch(e){
-   console.warn("OPFS read failed",e);
-   rootDir=null;
-   try{
-    await initOPFS();
-    if(rootDir){const f=await opfsFile(t.id,false);if(f?.size){t._blob=f;return f}}
-   }catch(retryError){console.warn("OPFS retry failed",retryError)}
-  }
- }
- if(t.storage==="idb-chunks"){
-  try{
-   const meta=await idbGet("audioMeta",t.id);
-   if(meta?.chunks){const chunks=await idbGetAll("audioChunks",IDBKeyRange.bound([t.id,0],[t.id,meta.chunks-1]));if(chunks.length===meta.chunks){const b=new Blob(chunks,{type:meta.type||"application/octet-stream"});t._blob=b;return b}}
-  }catch(e){console.warn("Chunked audio read failed",e)}
- }
- try{const b=await idbGet("files",t.id);if(b?.size){t._blob=b;return b}}catch{}
- return null;
 }
 async function removeAudio(t){
  t._blob=null;

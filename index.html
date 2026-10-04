@@ -344,7 +344,6 @@ async function idbDeleteAudioV4(id){
  try{await idbDel("audioMetaV4",id)}catch{}
 }
 async function idbPutV4Part(key,data){await idbPut("audioChunksV4",key,binaryArrayBuffer(data))}
-let storageWriteLock=Promise.resolve();
 async function withStorageWriteLock(fn){
  const previous=storageWriteLock;
  let release;

@@ -996,6 +996,13 @@ async function zipEntryBlob(file,e){
  }
  throw new Error("This preset uses a ZIP compression method that Localify Mobile cannot read in this browser.");
 }
+function choosePresetImportMode(){
+ return new Promise(resolve=>{
+  openModal('<div class="modalHead"><h2>Import preset</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="empty" style="padding:8px 0 16px"><strong>How should this library be imported?</strong><span>Add keeps your current library and adds the preset. Set replaces the current library with the preset.</span></div><div class="sheetGrid"><button class="sheetItem" id="presetImportAdd"><span><strong>Add to current library</strong><small>Keep your existing music and add this preset</small></span></button><button class="sheetItem" id="presetImportSet"><span><strong>Set as current library</strong><small>Replace your current music and library data</small></span></button></div>');
+  const finish=mode=>{closeModal();resolve(mode)};
+  $("#presetImportAdd").onclick=()=>finish("add");$("#presetImportSet").onclick=()=>finish("set");
+ });
+}
 async function importPreset(file){
  if(!file)return;
  busyShow("Importing preset","Preparing "+((Number(file.size)||0)/1073741824).toFixed(2)+" GB preset…");
@@ -1012,6 +1019,20 @@ async function importPreset(file){
   if(!mf)throw new Error("This file does not contain Localify library.json.");
   const manifest=sanitizeManifest(JSON.parse(await (await zipEntryBlob(file,mf)).text()));
   if(!manifest.tracks.length&&!manifest.artists.length&&!manifest.albums.length&&!manifest.playlists.length&&!manifest.folders.length)throw new Error("This preset does not contain supported Localify data.");
+  let importMode="add";
+  if((manifest.presetKind||"full")==="full"){
+    busyHide();await new Promise(resolve=>setTimeout(resolve,140));
+    importMode=await choosePresetImportMode();
+    if(!importMode){toast("Preset import cancelled.");return}
+    busyShow("Importing preset","Starting…");
+    busyUpdate("Importing preset","Preparing "+manifest.tracks.length+" songs…",2);
+    if(importMode==="set"){
+      audio.pause();currentBlob=null;if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl="";}audio.removeAttribute("src");state.currentId=null;state.queue=[];state.queueIndex=0;
+      for(const oldTrack of [...state.tracks]){busyCheck();await removeAudio(oldTrack)}
+      state.tracks=[];state.albums=[];state.artists=[];state.playlists=[];state.folders=[];state.liked=[];state.recent=[];
+      if(manifest.settings)state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},JSON.parse(JSON.stringify(manifest.settings)));
+    }
+  }
 
   // Remap imported IDs so albums, tracks, playlists and folders keep their
   // relationships even when this device already has a library with overlapping IDs.

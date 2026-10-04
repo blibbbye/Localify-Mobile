@@ -1,0 +1,84 @@
+name: Build Localify Mobile Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "manifest.webmanifest"
+      - "sw.js"
+      - "icon.svg"
+      - "package.json"
+      - "capacitor.config.json"
+      - "scripts/prepare-android.cjs"
+      - ".github/workflows/build-android.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate Android preparation script
+        run: node --check scripts/prepare-android.cjs
+
+      - name: Prepare web assets
+        run: |
+          rm -rf www
+          mkdir -p www
+          cp index.html manifest.webmanifest sw.js icon.svg www/
+
+      - name: Add fresh Android platform
+        run: npx cap add android
+
+      - name: Sync web app
+        run: npx cap sync android
+
+      - name: Configure Android playback
+        run: node scripts/prepare-android.cjs
+
+      - name: Build installable debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk LocalifyMobile.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalifyMobile-apk
+          path: LocalifyMobile.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct APK release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mobile-v${{ github.run_number }}
+          name: Localify Mobile APK ${{ github.run_number }}
+          prerelease: true
+          generate_release_notes: false
+          files: LocalifyMobile.apk

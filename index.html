@@ -918,7 +918,7 @@ function renderPlaylists(){
 function renderMore(){
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>More stuff</p></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Music</span></div><div class="morePanel"><button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button></div></div>'+
- '<div class="section"><div class="sectionHead"><strong>Backups</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button><button class="sheetItem" data-action="sharePreset"><span class="i" viewBox="0 0 24 24"></span><span>Share preset preview</span></button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Backups</strong><span>Backup & transfer</span></div><div class="morePanel"><button class="btn" data-action="importPreset">'+icon("upload")+'Import backup</button><button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button><button class="sheetItem" data-action="sharePreset"><span class="i" viewBox="0 0 24 24"></span><span>Share preset preview</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="morePanel"><button class="btn danger" data-action="deleteLibrary">'+icon("trash")+'Delete library</button></div></div>';
 }
 
@@ -996,7 +996,7 @@ async function sharePresetPreview(){await openMobileShareMenu(null)}
 function openLibraryTools(){
  openSheet('<h2>Library Tools</h2>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Add music</span></div><div class="sheetGrid"><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button></div></div>'+
- '<div class="section"><div class="sectionHead"><strong>Backups</strong><span>Backup & transfer</span></div><div class="sheetGrid"><button class="sheetItem" data-action="importPreset">'+icon("upload")+'<span>Import preset</span></button><button class="sheetItem" data-action="exportPreset">'+icon("download")+'<span>Export full preset</span></button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Backups</strong><span>Backup & transfer</span></div><div class="sheetGrid"><button class="sheetItem" data-action="importPreset">'+icon("upload")+'<span>Import backup</span></button><button class="sheetItem" data-action="exportPreset">'+icon("download")+'<span>Export full preset</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="sheetGrid"><button class="sheetItem" data-action="deleteLibrary">'+icon("trash")+'<span>Delete library</span></button></div></div>')
 }
 function openSongMenu(id){
@@ -1346,7 +1346,7 @@ async function storageInfo(){
 async function persistNow(){await persistRequest();let ok=false;try{ok=!!(await navigator.storage?.persisted?.())}catch{};toast(ok?"Localio storage is protected from automatic eviction.":"The browser did not grant persistent storage, but Localio will keep using its safest available storage mode.")}
 
 function sanitizeManifest(p){
- if(!p||typeof p!=="object")throw new Error("Invalid Localio preset.");
+ if(!p||typeof p!=="object")throw new Error("Invalid Localio backup.");
  p.tracks=Array.isArray(p.tracks)?p.tracks:[];p.artists=Array.isArray(p.artists)?p.artists:[];p.albums=Array.isArray(p.albums)?p.albums:[];p.playlists=Array.isArray(p.playlists)?p.playlists:[];p.folders=Array.isArray(p.folders)?p.folders:[];p.liked=Array.isArray(p.liked)?p.liked:[];p.recent=Array.isArray(p.recent)?p.recent:[];return p;
 }
 function u16(d,o){if(d instanceof DataView)return d.getUint16(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true);throw new TypeError("Invalid binary view")}function u32(d,o){if(d instanceof DataView)return d.getUint32(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true);throw new TypeError("Invalid binary view")}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
@@ -1354,7 +1354,7 @@ function read64(bytes,o){const d=new DataView(bytes.buffer,bytes.byteOffset+o,8)
 async function readZipIndex(file){
  const tailSize=Math.min(file.size,1024*1024),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer());
  let eocd=-1;for(let i=tail.length-22;i>=0;i--)if(tail[i]===0x50&&tail[i+1]===0x4b&&tail[i+2]===0x05&&tail[i+3]===0x06){eocd=i;break}
- if(eocd<0)throw new Error("This file is not a ZIP Localio preset.");
+ if(eocd<0)throw new Error("This file is not a ZIP Localio backup.");
  const ed=new DataView(tail.buffer,tail.byteOffset+eocd,22),entries=u16(ed,10),cdSize=u32(ed,12),cdOff=u32(ed,16);
  let realEntries=entries,realSize=cdSize,realOff=cdOff;
  if(entries===65535||cdSize===0xffffffff||cdOff===0xffffffff){
@@ -1384,7 +1384,7 @@ async function zipEntryBlob(file,e){
 }
 function choosePresetImportMode(){
  return new Promise(resolve=>{
-  openModal('<div class="modalHead"><h2>Import preset</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="empty" style="padding:8px 0 16px"><strong>How should this library be imported?</strong><span>Add keeps your current library and adds the preset. Set replaces the current library with the preset.</span></div><div class="sheetGrid"><button class="sheetItem" id="presetImportAdd"><span><strong>Add to current library</strong><small>Keep your existing music and add this preset</small></span></button><button class="sheetItem" id="presetImportSet"><span><strong>Set as current library</strong><small>Replace your current music and library data</small></span></button></div>');
+  openModal('<div class="modalHead"><h2>Import backup</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="empty" style="padding:8px 0 16px"><strong>How should this library be imported?</strong><span>Add keeps your current library and adds the preset. Set replaces the current library with the preset.</span></div><div class="sheetGrid"><button class="sheetItem" id="presetImportAdd"><span><strong>Add to current library</strong><small>Keep your existing music and add this preset</small></span></button><button class="sheetItem" id="presetImportSet"><span><strong>Set as current library</strong><small>Replace your current music and library data</small></span></button></div>');
   const finish=mode=>{closeModal();resolve(mode)};
   $("#presetImportAdd").onclick=()=>finish("add");$("#presetImportSet").onclick=()=>finish("set");
  });

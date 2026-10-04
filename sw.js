@@ -1,4 +1,4 @@
-const CACHE="localify-mobile-v17-20261004-player-covers";
+const CACHE="localify-mobile-v18-20261004-playback-fix";
 const CORE=["./","./index.html","./manifest.webmanifest","./icon.svg"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));

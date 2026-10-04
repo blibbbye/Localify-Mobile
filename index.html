@@ -603,8 +603,6 @@ function renderPlaylists(){
 function renderMore(){
  $("#main").innerHTML='<div class="head"><div class="headText"><h1>Library Tools</h1><p>Everything that does not need a permanent tab.</p></div></div>'+
  '<div class="morePanel">'+
- '<button class="btn" data-action="openFolders">'+icon("folder")+'Open folders</button>'+
- '<button class="btn" data-action="importFolder">'+icon("folder")+'Import folder</button>'+
  '<button class="btn" data-action="addSongs">'+icon("plus")+'Add music</button>'+
  '<button class="btn" data-action="importPreset">'+icon("upload")+'Import preset</button>'+
  '<button class="btn" data-action="exportPreset">'+icon("download")+'Export full preset</button>'+
@@ -638,7 +636,6 @@ function openSheet(html){
 function closeSheet(){$("#sheetShade").classList.remove("open")}
 function openLibraryTools(){
  openSheet('<h2>Library Tools</h2>'+
- '<div class="section"><div class="sectionHead"><strong>Folders</strong><span>Organize</span></div><div class="sheetGrid"><button class="sheetItem" data-action="openFolders">'+icon("folder")+'<span>Open folders</span></button><button class="sheetItem" data-action="importFolder">'+icon("folder")+'<span>Import folder</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Add music</span></div><div class="sheetGrid"><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="sheetGrid"><button class="sheetItem" data-action="importPreset">'+icon("upload")+'<span>Import preset</span></button><button class="sheetItem" data-action="exportPreset">'+icon("download")+'<span>Export full preset</span></button></div></div>'+
  '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="sheetGrid"><button class="sheetItem" data-action="deleteLibrary">'+icon("trash")+'<span>Delete library</span></button></div></div>')

@@ -134,7 +134,7 @@ const COVER_MAP_URL="https://raw.githubusercontent.com/blibbbye/Localify/main/co
 const COVER_DIR="https://raw.githubusercontent.com/blibbbye/Localify/main/covers/";
 const COVER_EXTS=[".jpg",".jpeg",".png",".webp",".gif",".avif"];
 let db=null,rootDir=null,audioUrl="",currentBlob=null,saveTimer=0,toastTimer=0,busy=false,operationController=null,storageReady=false,storageInitPromise=null;
-let state={version:3,view:"home",search:"",tracks:[],albums:[],artists:[],playlists:[],folders:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{loggedIn:false,name:""},detail:null};
+let state={version:3,view:"home",search:"",searchFilter:"all",tracks:[],albums:[],artists:[],playlists:[],folders:[],liked:[],recent:[],queue:[],queueIndex:0,currentId:null,settings:{volume:.9,repeat:"off",shuffle:false},stats:{totalSeconds:0,playCounts:{},events:[],lastTrackId:null,lastPosition:0},profile:{name:"Localify User",avatar:null},detail:null};
 let coverMap=null,coverPromise=null;
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 function uid(){return crypto.randomUUID?crypto.randomUUID():"m-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2)}
@@ -259,10 +259,17 @@ function normalizeStats(){
  state.stats=s;return s;
 }
 function normalizeProfile(){
- state.profile=Object.assign({loggedIn:false,name:""},state.profile||{});
- state.profile.loggedIn=!!state.profile.loggedIn;
- state.profile.name=String(state.profile.name||"").trim().slice(0,40);
+ const old=state.profile||{};
+ state.profile={name:String(old.name||"").trim().slice(0,40)||"Localify User",avatar:typeof old.avatar==="string"&&old.avatar?old.avatar:null};
  return state.profile;
+}
+function fileToDataUrl(file){
+ return new Promise((resolve,reject)=>{
+  const r=new FileReader();
+  r.onload=()=>resolve(String(r.result||""));
+  r.onerror=()=>reject(r.error||new Error("Could not read the image."));
+  r.readAsDataURL(file);
+ });
 }
 function formatListenTime(sec){
  const s=Math.max(0,Math.floor(Number(sec)||0)),m=Math.floor(s/60);
@@ -309,8 +316,9 @@ function initials(name){return String(name||"Localify").trim().split(/\s+/).map(
 function renderProfileButton(){
  const p=normalizeProfile(),b=$("#profileBtn"),t=$("#profileBtnText"),ic=b?.querySelector(".profileIcon");
  if(!b||!t||!ic)return;
- if(p.loggedIn){t.textContent=p.name||"Profile";ic.textContent=initials(p.name)}
- else{t.textContent="Log in";ic.innerHTML=icon("user")}
+ t.textContent=p.name||"Profile";
+ if(p.avatar)ic.innerHTML='<img src="'+esc(p.avatar)+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
+ else{ic.innerHTML=icon("user");ic.style.background="#24313c"}
 }
 function bindProfileModal(){
  $("#profileVolume")?.addEventListener("input",e=>{state.settings.volume=Number(e.target.value);audio.volume=state.settings.volume;scheduleSave()});
@@ -326,15 +334,26 @@ function openAccountSettings(){
 }
 function openProfile(){
  normalizeProfile();normalizeStats();
- if(!state.profile.loggedIn){
-  openModal('<div class="modalHead"><h2>Log in</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="loginBox"><div class="profileIdentity"><div class="profileAvatar">'+icon("user")+'</div><div><h3>Localify Profile</h3><p>Recaps, listening time and top songs</p></div></div><div class="loginHint">This profile is stored on this device. It is not a cloud account, so it does not send your music or listening history anywhere.</div><div class="field"><label>Display name</label><input id="profileNameInput" maxlength="40" placeholder="Your name"></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="profileLogin">'+icon("user")+'Continue</button></div></div>');
-  return;
- }
  const week=weeklyStats(),top=profileTopSongs(10),s=normalizeStats(),plays=Object.values(s.playCounts).reduce((n,x)=>n+(Number(x)||0),0);
  const topHtml=top.length?'<div class="profileList">'+top.map((x,i)=>'<div class="profileRow"><div class="profileRank">'+(i+1)+'</div><div class="profileRowArt" data-profile-art="'+esc(x.track.id)+'">'+icon("library")+'</div><div class="profileRowText"><strong>'+esc(trackTitle(x.track))+'</strong><span>'+esc(artistText(x.track))+' • '+x.count+' plays</span></div><div class="profileRowTime">'+formatListenTime(s.events.filter(e=>e.id===x.track.id).reduce((n,e)=>n+(Number(e.seconds)||0),0))+'</div></div>').join("")+'</div>':'<div class="empty"><strong>No top songs yet</strong>Play some music to start tracking your history.</div>';
  const weeklyTop=week.list[0]?.track?trackTitle(week.list[0].track):"None";
- openModal('<div class="modalHead"><h2>Your Localify</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="profileCard"><div class="profileIdentity"><div class="profileAvatar">'+esc(initials(state.profile.name))+'</div><div><h3>'+esc(state.profile.name||"Profile")+'</h3><p>Localify Profile</p></div></div><div class="profileStats"><div class="profileStat"><strong>'+state.tracks.length+'</strong><span>Songs</span></div><div class="profileStat"><strong>'+state.albums.length+'</strong><span>Albums</span></div><div class="profileStat"><strong>'+state.artists.length+'</strong><span>Artists</span></div><div class="profileStat"><strong>'+state.playlists.length+'</strong><span>Playlists</span></div><div class="profileStat"><strong>'+state.recent.length+'</strong><span>Recently played</span></div><div class="profileStat"><strong>'+formatListenTime(s.totalSeconds)+'</strong><span>Listening time</span></div></div><div class="profileSection"><div class="profileSectionTitle">Top songs ever</div>'+topHtml+'</div><div class="profileSection"><div class="profileSectionTitle">Weekly recap</div><div class="recapBox"><strong>Last 7 days</strong><div class="recapGrid"><div class="recapStat"><strong>'+formatListenTime(week.seconds)+'</strong><span>Listening time</span></div><div class="recapStat"><strong>'+week.plays+'</strong><span>Song starts</span></div><div class="recapStat"><strong>'+week.unique+'</strong><span>Unique songs</span></div><div class="recapStat"><strong>'+esc(weeklyTop)+'</strong><span>Top song</span></div><div class="recapStat"><strong>'+esc(week.topArtist)+'</strong><span>Top artist</span></div></div></div></div><div class="profileSection"><div class="profileSectionTitle">Settings</div><div class="profileSettings"><label class="profileSetting"><span>Volume</span><input id="profileVolume" type="range" min="0" max="1" step=".01" value="'+String(state.settings.volume??.9)+'"></label><label class="profileSetting"><span>Shuffle</span><select id="profileShuffle"><option value="off" '+(!state.settings.shuffle?"selected":"")+'>Off</option><option value="on" '+(state.settings.shuffle?"selected":"")+'>On</option></select></label><label class="profileSetting"><span>Repeat</span><select id="profileRepeat"><option value="off" '+(state.settings.repeat==="off"?"selected":"")+'>Off</option><option value="all" '+(state.settings.repeat==="all"?"selected":"")+'>All</option><option value="one" '+(state.settings.repeat==="one"?"selected":"")+'>One</option></select></label></div></div><div class="profileFoot"><button class="btn" data-action="storageInfo">'+icon("shield")+'Storage</button><button class="btn" data-action="backupMeta">'+icon("download")+'Backup</button><button class="btn danger" data-action="profileLogout">Log out</button></div></div>');
+ openModal('<div class="modalHead"><h2>Your Localify</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="profileCard">'+
+ '<div class="profileIdentity"><div class="profileAvatar">'+(state.profile.avatar?'<img src="'+esc(state.profile.avatar)+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">':esc(initials(state.profile.name)))+'</div><div><h3>'+esc(state.profile.name)+'</h3><p>Your profile on this device</p></div></div>'+
+ '<div class="profileFoot"><button class="btn" data-action="editProfile">'+icon("edit")+'Edit profile</button><button class="btn" data-action="accountSettings">'+icon("settings")+'Account settings</button></div>'+
+ '<div class="profileStats"><div class="profileStat"><strong>'+state.tracks.length+'</strong><span>Songs</span></div><div class="profileStat"><strong>'+state.albums.length+'</strong><span>Albums</span></div><div class="profileStat"><strong>'+state.artists.length+'</strong><span>Artists</span></div><div class="profileStat"><strong>'+state.playlists.length+'</strong><span>Playlists</span></div><div class="profileStat"><strong>'+state.folders.length+'</strong><span>Folders</span></div><div class="profileStat"><strong>'+state.recent.length+'</strong><span>Recently played</span></div><div class="profileStat"><strong>'+plays+'</strong><span>Total plays</span></div><div class="profileStat"><strong>'+formatListenTime(s.totalSeconds)+'</strong><span>Listening time</span></div></div>'+
+ '<div class="profileSection"><div class="profileSectionTitle">Top songs ever</div>'+topHtml+'</div>'+
+ '<div class="profileSection"><div class="profileSectionTitle">Weekly recap</div><div class="recapBox"><strong>Last 7 days</strong><div class="recapGrid"><div class="recapStat"><strong>'+formatListenTime(week.seconds)+'</strong><span>Listening time</span></div><div class="recapStat"><strong>'+week.plays+'</strong><span>Song starts</span></div><div class="recapStat"><strong>'+week.unique+'</strong><span>Unique songs</span></div><div class="recapStat"><strong>'+esc(weeklyTop)+'</strong><span>Top song</span></div><div class="recapStat"><strong>'+esc(week.topArtist)+'</strong><span>Top artist</span></div></div></div></div>'+
+ '<div class="profileSection"><div class="profileSectionTitle">Data & safety</div><div class="profileSettings"><button class="btn" data-action="storageInfo">'+icon("shield")+'Storage & safety</button><button class="btn" data-action="backupMeta">'+icon("download")+'Export metadata backup</button></div></div></div>');
  bindProfileModal();
+}
+function editProfile(){
+ normalizeProfile();
+ openModal('<div class="modalHead"><h2>Edit profile</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="form"><div class="coverPick"><div class="coverPickPreview" id="profilePreview">'+(state.profile.avatar?'<img src="'+esc(state.profile.avatar)+'" alt="">':icon("user"))+'</div><div><button class="btn" data-action="changeProfilePicture">'+icon("upload")+'Choose profile picture</button><div class="loginHint">The image is saved locally with your Localify profile.</div></div></div><div class="field"><label>Display name</label><input id="editProfileName" maxlength="40" value="'+esc(state.profile.name||"Localify User")+'" placeholder="Your name"></div></div><div class="modalFoot"><button class="btn" data-action="closeModal">Cancel</button><button class="btn primary" data-action="saveProfile">Save</button></div>');
+}
+async function saveProfile(){
+ const n=$("#editProfileName")?.value.trim()||"Localify User";
+ state.profile.name=n.slice(0,40);
+ await saveMeta(true);closeModal();renderProfileButton();openProfile();
 }
 async function saveMeta(writeBackup=true){
  const meta=cloneMeta();
@@ -353,7 +372,7 @@ async function restore(){
   try{meta=JSON.parse(localStorage.getItem(BACKUP_KEY)||"null");fromBackup=!!meta}catch{}
  }
  if(!meta)return false;
- state=Object.assign(state,meta);
+ state=Object.assign(state,meta);normalizeProfile();
  state.folders=Array.isArray(state.folders)?state.folders:[];
  state.folders.forEach(ensureFolderArrays);
  state.settings=Object.assign({volume:.9,repeat:"off",shuffle:false},state.settings||{});
@@ -496,7 +515,7 @@ function navHtml(){
 function songRow(t){
  const playing=t.id===state.currentId&&!audio.paused;
  return '<div class="row '+(playing?"playing":"")+'" data-id="'+esc(t.id)+'">'+
-   '<button class="circle rowPlay" data-action="playSong" aria-label="Play">'+icon(playing?"pause":"play")+'</button>'+
+   '<button class="circle rowPlay playButton" data-action="playSong" data-id="'+esc(t.id)+'" aria-label="'+(playing?"Pause":"Play")+'">'+icon(playing?"pause":"play")+'</button>'+
    '<div class="cover" data-cover-id="'+esc(t.id)+'">'+icon("library")+'</div>'+
    '<div class="rtext"><div class="rtitle">'+esc(trackTitle(t))+(t.explicit?'<span class="pill">E</span>':"")+'</div><div class="rsub">'+esc(artistText(t))+" • "+esc(albumName(t))+'</div></div>'+
    '<div class="rtime">'+esc(duration(t.duration))+'</div>'+
@@ -517,23 +536,33 @@ function playlistCard(p){
 }
 function renderHome(){
  const recent=state.recent.map(id=>state.tracks.find(t=>t.id===id)).filter(Boolean).slice(0,8);
- const albums=state.albums.slice(0,8);
+ const albums=state.albums.slice(0,8),artists=state.artists.slice(0,8),playlists=state.playlists.slice(0,8),folders=state.folders.slice(0,6);
  $("#main").innerHTML=
- '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists, presets and iPhone media controls.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
+ '<section class="hero"><div class="heroKicker">LOCALIFY MOBILE</div><h2>Your music.<br>On your phone.</h2><p>Local playback, persistent storage, albums, artists, playlists and folders.</p><div class="actions"><button type="button" class="btn primary" data-action="addSongs">'+icon("plus")+'Add Songs</button><button type="button" class="btn" data-action="openLibraryTools">'+icon("more")+'Library Tools</button></div></section>'+
  '<div class="section"><div class="sectionHead"><strong>Recently played</strong><span>'+recent.length+'</span></div>'+(recent.length?'<div class="grid">'+recent.map(trackCard).join("")+'</div>':'<div class="empty"><strong>No history yet</strong>Play something and it will show here.</div>')+'</div>'+
- '<div class="section"><div class="sectionHead"><strong>Folders</strong><span>'+state.folders.length+'</span></div>'+(state.folders.length?'<div class="grid">'+state.folders.slice(0,6).map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Create one from Library Tools.')+'</div>'+'<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>';
+ '<div class="section"><div class="sectionHead"><strong>Folders</strong><button class="btn small" data-action="createFolder">'+icon("plus")+'Add folder</button></div>'+(folders.length?'<div class="grid">'+folders.map(folderCard).join("")+'</div>':'<div class="empty"><strong>No folders yet</strong>Use Add folder to create one.</div>')+'</div>'+
+ '<div class="section"><div class="sectionHead"><strong>Your albums</strong><span>'+state.albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.map(albumCard).join("")+'</div>':'<div class="empty"><strong>No albums yet</strong>Add songs or create an album.</div>')+'</div>'+
+ '<div class="section"><div class="sectionHead"><strong>Your artists</strong><span>'+state.artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.map(artistCard).join("")+'</div>':'<div class="empty"><strong>No artists yet</strong>Create an artist or import music.</div>')+'</div>'+
+ '<div class="section"><div class="sectionHead"><strong>Your playlists</strong><span>'+state.playlists.length+'</span></div>'+(playlists.length?'<div class="grid">'+playlists.map(playlistCard).join("")+'</div>':'<div class="empty"><strong>No playlists yet</strong>Create a playlist to see it here.</div>')+'</div>';
  bindCovers();
 }
-function trackCard(t){return '<div class="card" data-action="playSong" data-id="'+esc(t.id)+'">'+art(t,"art")+'<div class="title">'+esc(trackTitle(t))+'</div><div class="sub">'+esc(artistText(t))+'</div></div>'}
+function trackCard(t){return '<div class="card playButton" data-action="playSong" data-id="'+esc(t.id)+'">'+art(t,"art")+'<div class="title">'+esc(trackTitle(t))+'</div><div class="sub">'+esc(artistText(t))+'</div></div>'}
 function renderSearch(){
- const q=state.search.trim().toLowerCase(), all=state.tracks;
+ const q=state.search.trim().toLowerCase(),all=state.tracks,filter=state.searchFilter||"all";
  const songs=q?all.filter(t=>(trackTitle(t)+" "+artistText(t)+" "+albumName(t)).toLowerCase().includes(q)):all;
  const albums=q?state.albums.filter(a=>(a.title+" "+(a.artist||"")).toLowerCase().includes(q)):state.albums;
  const artists=q?state.artists.filter(a=>String(a.name||"").toLowerCase().includes(q)):state.artists;
- $("#main").innerHTML='<div class="head"><div class="headText"><h1>Search</h1><p>'+(q?(songs.length+" songs • "+albums.length+" albums • "+artists.length+" artists"):"Search your local catalog")+'</p></div></div>'+
-   '<div class="section"><div class="sectionHead"><strong>Songs</strong><span>'+songs.length+'</span></div>'+(songs.length?'<div class="list">'+songs.slice(0,100).map(songRow).join("")+'</div>':'<div class="empty">No songs found</div>')+'</div>'+
-   '<div class="section"><div class="sectionHead"><strong>Albums</strong><span>'+albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.slice(0,60).map(albumCard).join("")+'</div>':'<div class="empty">No albums found</div>')+'</div>'+
-   '<div class="section"><div class="sectionHead"><strong>Artists</strong><span>'+artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.slice(0,60).map(artistCard).join("")+'</div>':'<div class="empty">No artists found</div>');
+ const playlists=q?state.playlists.filter(p=>(p.name||"").toLowerCase().includes(q)):state.playlists;
+ const folders=q?state.folders.filter(f=>(f.name||"").toLowerCase().includes(q)):state.folders;
+ const tabs=[["all","All"],["songs","Songs"],["albums","Albums"],["artists","Artists"],["playlists","Playlists"],["folders","Folders"]];
+ let html='<div class="head"><div class="headText"><h1>Search</h1><p>'+ (q?(songs.length+" songs • "+albums.length+" albums • "+artists.length+" artists • "+playlists.length+" playlists • "+folders.length+" folders"):"Search your local catalog")+'</p></div></div><div class="toolbar">'+tabs.map(x=>'<button class="'+(filter===x[0]?"active":"")+'" data-search-filter="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>';
+ if(filter==="all"||filter==="songs")html+='<div class="section"><div class="sectionHead"><strong>Songs</strong><span>'+songs.length+'</span></div>'+(songs.length?'<div class="list">'+songs.slice(0,100).map(songRow).join("")+'</div>':'<div class="empty">No songs found</div>')+'</div>';
+ if(filter==="all"||filter==="albums")html+='<div class="section"><div class="sectionHead"><strong>Albums</strong><span>'+albums.length+'</span></div>'+(albums.length?'<div class="grid">'+albums.slice(0,60).map(albumCard).join("")+'</div>':'<div class="empty">No albums found</div>')+'</div>';
+ if(filter==="all"||filter==="artists")html+='<div class="section"><div class="sectionHead"><strong>Artists</strong><span>'+artists.length+'</span></div>'+(artists.length?'<div class="grid">'+artists.slice(0,60).map(artistCard).join("")+'</div>':'<div class="empty">No artists found</div>')+'</div>';
+ if(filter==="all"||filter==="playlists")html+='<div class="section"><div class="sectionHead"><strong>Playlists</strong><span>'+playlists.length+'</span></div>'+(playlists.length?'<div class="grid">'+playlists.slice(0,60).map(playlistCard).join("")+'</div>':'<div class="empty">No playlists found</div>')+'</div>';
+ if(filter==="all"||filter==="folders")html+='<div class="section"><div class="sectionHead"><strong>Folders</strong><span>'+folders.length+'</span></div>'+(folders.length?'<div class="grid">'+folders.slice(0,60).map(folderCard).join("")+'</div>':'<div class="empty">No folders found</div>')+'</div>';
+ $("#main").innerHTML=html;
+ $$('[data-search-filter]').forEach(b=>b.onclick=()=>{state.searchFilter=b.dataset.searchFilter;renderSearch()});
  bindCovers();
 }
 function renderLibrary(){
@@ -597,7 +626,13 @@ function openSheet(html){
  $("#sheetShade").classList.add("open");
 }
 function closeSheet(){$("#sheetShade").classList.remove("open")}
-function openLibraryTools(){openSheet('<h2>Library Tools</h2><div class="sheetGrid"><button class="sheetItem" data-action="openFolders">'+icon("folder")+'<span>Folders</span></button><button class="sheetItem" data-action="createFolder">'+icon("plus")+'<span>New folder</span></button><button class="sheetItem" data-action="importFolder">'+icon("folder")+'<span>Import folder</span></button><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button><button class="sheetItem" data-action="importPreset">'+icon("upload")+'<span>Import preset</span></button><button class="sheetItem" data-action="exportPreset">'+icon("download")+'<span>Export preset</span></button><button class="sheetItem" data-action="backupMeta">'+icon("shield")+'<span>Export metadata backup</span></button><button class="sheetItem" data-action="storageInfo">'+icon("settings")+'<span>Storage & safety</span></button><button class="sheetItem" data-action="deleteLibrary">'+icon("trash")+'<span>Delete library</span></button></div>')}
+function openLibraryTools(){
+ openSheet('<h2>Library Tools</h2>'+
+ '<div class="section"><div class="sectionHead"><strong>Folders</strong><span>Organize</span></div><div class="sheetGrid"><button class="sheetItem" data-action="openFolders">'+icon("folder")+'<span>Open folders</span></button><button class="sheetItem" data-action="importFolder">'+icon("folder")+'<span>Import folder</span></button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Library</strong><span>Add music</span></div><div class="sheetGrid"><button class="sheetItem" data-action="addSongs">'+icon("plus")+'<span>Add music</span></button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Presets</strong><span>Backup & transfer</span></div><div class="sheetGrid"><button class="sheetItem" data-action="importPreset">'+icon("upload")+'<span>Import preset</span></button><button class="sheetItem" data-action="exportPreset">'+icon("download")+'<span>Export full preset</span></button></div></div>'+
+ '<div class="section"><div class="sectionHead"><strong>Danger zone</strong><span>Permanent</span></div><div class="sheetGrid"><button class="sheetItem" data-action="deleteLibrary">'+icon("trash")+'<span>Delete library</span></button></div></div>')
+}
 function openSongMenu(id){
  const t=state.tracks.find(x=>x.id===id);if(!t)return;
  openSheet('<h2>'+esc(trackTitle(t))+'</h2><div class="sheetGrid"><button class="sheetItem" data-action="playSong" data-id="'+esc(id)+'">'+icon("play")+'<span>Play</span></button><button class="sheetItem" data-action="queueSong" data-id="'+esc(id)+'">'+icon("queue")+'<span>Add to queue</span></button><button class="sheetItem" data-action="toggleLike" data-id="'+esc(id)+'">'+icon("heart")+'<span>'+(state.liked.includes(id)?"Unlike":"Like")+'</span></button><button class="sheetItem" data-action="editSong" data-id="'+esc(id)+'">'+icon("edit")+'<span>Edit song</span></button><button class="sheetItem" data-action="downloadSong" data-id="'+esc(id)+'">'+icon("download")+'<span>Download</span></button></div>');
@@ -804,9 +839,9 @@ async function persistNow(){await persistRequest();toast("Persistent storage req
 
 function sanitizeManifest(p){
  if(!p||typeof p!=="object")throw new Error("Invalid Localify preset.");
- p.tracks=Array.isArray(p.tracks)?p.tracks:[];p.artists=Array.isArray(p.artists)?p.artists:[];p.albums=Array.isArray(p.albums)?p.albums:[];p.playlists=Array.isArray(p.playlists)?p.playlists:[];p.liked=Array.isArray(p.liked)?p.liked:[];p.recent=Array.isArray(p.recent)?p.recent:[];return p;
+ p.tracks=Array.isArray(p.tracks)?p.tracks:[];p.artists=Array.isArray(p.artists)?p.artists:[];p.albums=Array.isArray(p.albums)?p.albums:[];p.playlists=Array.isArray(p.playlists)?p.playlists:[];p.folders=Array.isArray(p.folders)?p.folders:[];p.liked=Array.isArray(p.liked)?p.liked:[];p.recent=Array.isArray(p.recent)?p.recent:[];return p;
 }
-function u16(d,o){if(d instanceof DataView)return d.getUint16(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true);throw new TypeError("Invalid binary view")}function u32(d,o){if(d instanceof DataView)return d.getUint32(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true);throw new TypeError("Invalid binary view")}function getUnnit16(d,o){return u16(d,o)}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
+function u16(d,o){if(d instanceof DataView)return d.getUint16(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint16(o,true);throw new TypeError("Invalid binary view")}function u32(d,o){if(d instanceof DataView)return d.getUint32(o,true);if(d&&d.buffer instanceof ArrayBuffer)return new DataView(d.buffer,d.byteOffset||0,d.byteLength).getUint32(o,true);throw new TypeError("Invalid binary view")}function zip64(extra,need){let p=0;while(p+4<=extra.length){const id=u16(extra,p),len=u16(extra,p+2),s=p+4,e=s+len;if(e>extra.length)break;if(id===1){let q=s;if(need==="uncomp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="comp"&&q+8<=e)return read64(extra,q);q+=8;if(need==="offset"&&q+8<=e)return read64(extra,q)}p=e}return null}
 function read64(bytes,o){const d=new DataView(bytes.buffer,bytes.byteOffset+o,8);return d.getUint32(0,true)+d.getUint32(4,true)*4294967296}
 async function readZipIndex(file){
  const tailSize=Math.min(file.size,1024*1024),tail=new Uint8Array(await file.slice(file.size-tailSize).arrayBuffer());
@@ -855,15 +890,16 @@ async function importPreset(file){
    const e=src.audioFile?index.get(src.audioFile):null;
    if(e){const blob=await zipEntryBlob(file,e);await saveAudio(t,blob)}else if(src.hasAudio)throw new Error("Missing audio for "+(src.title||"Unknown song"));
    delete t._blob;t._blob=null;state.tracks.push(t);
-   if(done%20===0)await saveMeta(true);
+   if(done%5===0)await saveMeta(false);
    await new Promise(r=>setTimeout(r,0));
   }
   busyCheck();
   manifest.playlists.forEach(p=>{if(!p.id)p.id=uid();state.playlists.push(p)});
+  if(Array.isArray(manifest.folders))manifest.folders.forEach(f=>{const x=JSON.parse(JSON.stringify(f));if(!x.id)x.id=uid();ensureFolderArrays(x);x.albumIds=x.albumIds.filter(id=>state.albums.some(a=>a.id===id));x.trackIds=x.trackIds.filter(id=>state.tracks.some(t=>t.id===id));x.artistIds=x.artistIds.filter(id=>state.artists.some(a=>a.id===id));x.playlistIds=x.playlistIds.filter(id=>state.playlists.some(p=>p.id===id));state.folders.push(x)});
   if(Array.isArray(manifest.liked))state.liked=[...new Set([...state.liked,...manifest.liked])];
   if(Array.isArray(manifest.recent))state.recent=[...new Set([...manifest.recent,...state.recent])].slice(0,100);
   await saveMeta(true);busyHide();render();toast("Preset imported successfully.");
- }catch(e){if(e?.name==="AbortError")toast("Preset import cancelled.");else{console.error(e);toast(e?.message||"Could not import preset.");}}finally{busyHide()}
+ }catch(e){if(e?.name==="AbortError")toast("Preset import cancelled.");else{console.error(e);try{await saveMeta(true)}catch{}toast((e?.message||"Could not import preset.")+" Already imported songs were kept.");}}finally{busyHide()}
 }
 function zipU16(n){const a=new Uint8Array(2);new DataView(a.buffer).setUint16(0,n,true);return a}
 function zipU32(n){const a=new Uint8Array(4);new DataView(a.buffer).setUint32(0,n>>>0,true);return a}
@@ -918,7 +954,7 @@ function bindEvents(){
   const root=(files[0]?.webkitRelativePath||"").split("/")[0]||"Imported folder";
   addFiles(files,{folderName:root,directoryImport:true});
  });
- $("#imagePicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f){window.__pickedImage=f;toast("Image selected.");}});
+ $("#imagePicker").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(window.__editingProfilePicture){try{state.profile.avatar=await fileToDataUrl(f);window.__editingProfilePicture=false;await saveMeta(true);closeModal();openProfile();}catch(err){toast("Could not save that profile picture.");}return}window.__pickedImage=f;toast("Image selected.");});
  $("#presetPicker").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(f)importPreset(f)});
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
@@ -936,6 +972,11 @@ function bindEvents(){
     if(view){state.view=view;state.detail=null;render();}
     return;
   }
+  const playEl=e.target.closest?.(".playButton");
+  if(playEl){
+   const pid=playEl.dataset.id||playEl.closest("[data-id]")?.dataset.id;
+   if(pid){e.preventDefault();e.stopPropagation();await playTrack(pid);return;}
+  }
   const b=e.target.closest("[data-action]");if(!b)return;
   const a=b.dataset.action,id=b.dataset.id;
   if(busy&&["addSongs","importPreset","exportPreset","deleteLibrary"].includes(a)){
@@ -943,14 +984,9 @@ function bindEvents(){
     return;
   }
   if(a==="closeModal"){closeModal();return}
-  if(a==="profileLogin"){
-   const name=$("#profileNameInput")?.value.trim()||"Localify User";
-   state.profile={loggedIn:true,name:name.slice(0,40)};
-   normalizeProfile();saveMeta(true).catch(()=>{});renderProfileButton();closeModal();openProfile();return;
-  }
-  if(a==="profileLogout"){
-   state.profile={loggedIn:false,name:""};saveMeta(true).catch(()=>{});renderProfileButton();closeModal();return;
-  }
+  if(a==="editProfile"){closeSheet();editProfile();return}
+  if(a==="changeProfilePicture"){window.__editingProfilePicture=true;openFilePicker($("#imagePicker"));return}
+  if(a==="saveProfile"){saveProfile();return}
   if(a==="addSongs"){closeSheet();openFilePicker($("#audioPicker"));return}
   if(a==="importFolder"){closeSheet();openFilePicker($("#folderPicker"));return}
   if(a==="openFolders"){closeSheet();state.view="folders";render();return}

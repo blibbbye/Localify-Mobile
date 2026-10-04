@@ -52,11 +52,11 @@ button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:22px 16px 5
  const alpha=(arr,getter)=>arr.slice().sort((a,b)=>String(getter(a)||"").localeCompare(String(getter(b)||""),undefined,{numeric:true,sensitivity:"base"}));
  const cats={
   overview:{label:"Overview",items:[]},
-  albums:{label:"Albums",items:alpha(d.a||d.albums||[],x=>x.t??x.title)},
-  artists:{label:"Artists",items:alpha(d.r||d.artists||[],x=>x.n??x.name)},
-  songs:{label:"Songs",items:alpha(d.s||d.songs||[],x=>x.t??x.title)},
-  folders:{label:"Folders",items:alpha(d.f||d.folders||[],x=>x.n??x.name)},
-  playlists:{label:"Playlists",items:alpha(d.p||d.playlists||[],x=>x.n??x.name)}
+  albums:{label:"Albums",items:alpha(d.a||d.albums||[],x=>(x.t??x.title??""))},
+  artists:{label:"Artists",items:alpha(d.r||d.artists||[],x=>(x.n??x.name??""))},
+  songs:{label:"Songs",items:alpha(d.s||d.songs||[],x=>(x.t??x.title??""))},
+  folders:{label:"Folders",items:alpha(d.f||d.folders||[],x=>(x.n??x.name??""))},
+  playlists:{label:"Playlists",items:alpha(d.p||d.playlists||[],x=>(x.n??x.name??""))}
  };
  const counts=d.c||d.counts||{};
  $("#title").textContent=d.n||d.name||"Localify Library";
@@ -73,7 +73,7 @@ button,input{font:inherit}.wrap{max-width:1080px;margin:auto;padding:22px 16px 5
    return '<div class="shareFolderArt">'+[0,1,2,3].map(i=>covers[i]?'<div><img src="'+esc(covers[i])+'" alt=""></div>':'<div><span class="sharePlaceholder">▣</span></div>').join("")+'</div>';
  }
  function cardHtml(type,x){
-   const title=type==="albums"?x.t??x.title||"Untitled album":type==="artists"?x.n??x.name||"Unknown Artist":type==="songs"?x.t??x.title||"Untitled song":type==="folders"?x.n??x.name||"Untitled folder":x.n??x.name||"Untitled playlist";
+   const title=type==="albums"?(x.t??x.title??"Untitled album"):type==="artists"?(x.n??x.name??"Unknown Artist"):type==="songs"?(x.t??x.title??"Untitled song"):type==="folders"?(x.n??x.name??"Untitled folder"):(x.n??x.name??"Untitled playlist");
    const cover=type==="artists"?x.k||x.cover||x.image||"":x.k||x.cover||"";
    const artHtml=type==="folders"?folderHtml(x):'<div class="shareArt">'+(cover?'<img src="'+esc(cover)+'" alt="">':'<span class="sharePlaceholder">'+(type==="artists"?"♟":type==="playlists"?"☷":type==="songs"?"♫":"▣")+'</span>')+'</div>';
    return '<div class="shareCard '+(type==="artists"?"artist":"")+'"><div class="shareCardTitle">'+esc(title)+'</div>'+artHtml+'</div>';

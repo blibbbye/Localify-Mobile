@@ -1007,8 +1007,11 @@ async function importPreset(file){
     const a=JSON.parse(JSON.stringify(src)),oldId=a.id||uid();
     const mappedArtists=(Array.isArray(src.artistIds)?src.artistIds:[])
       .map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id));
-    if(mappedArtists.length){
-      a.artistIds=[...new Set(mappedArtists)];
+    const fallbackNames=String(src.artistNames||src.artist||"").split(/[,;]\s*/).map(x=>x.trim()).filter(Boolean);
+    const fallbackArtistIds=fallbackNames.map(n=>state.artists.find(v=>String(v.name||"").trim().toLowerCase()===n.toLowerCase())?.id).filter(Boolean);
+    const finalArtists=[...new Set(mappedArtists.length?mappedArtists:fallbackArtistIds)];
+    if(finalArtists.length){
+      a.artistIds=finalArtists;
       a.artistNames=a.artistIds.map(id=>state.artists.find(x=>x.id===id)?.name).filter(Boolean).join(", ");
       a.artist=a.artistNames;
     }

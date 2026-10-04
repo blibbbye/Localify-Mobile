@@ -1180,9 +1180,17 @@ function renderPlayer(){
 }
 function storageInfo(){
  const p=navigator.storage?.estimate?navigator.storage.estimate():Promise.resolve({});
- Promise.resolve(p).then(x=>{const used=Math.round((x.usage||0)/1048576),quota=Math.round((x.quota||0)/1048576),pct=quota?Math.min(100,used/quota*100):0;openModal('<div class="modalHead"><h2>Storage & safety</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="notice">Persistent storage is bsically that localify saves the stuff on ur phone so its more safe but some browsers dont allow that but yeah</div><div class="section"><strong>Browser storage</strong><div class="storageMeter"><div style="width:'+pct+'%"></div></div><div class="detailSub">'+used+' MB used'+(quota?" of "+quota+" MB":"")+'</div></div><div class="modalFoot"><button class="btn" data-action="persistNow">'+icon("shield")+'Enable persistent storage</button></div>')})
+ Promise.resolve(p).then(async x=>{
+  const used=Math.round((x.usage||0)/1048576),quota=Math.round((x.quota||0)/1048576),pct=quota?Math.min(100,used/quota*100):0;
+  const hasPicker=typeof window.showDirectoryPicker==="function";
+  const deviceText=externalDir?"A device folder is connected for large audio imports.":"Browser storage is used for audio by default.";
+  openModal('<div class="modalHead"><h2>Storage & safety</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div>'+
+   '<div class="notice">'+deviceText+' Persistent storage helps prevent normal browser cleanup, but it does not increase the browser storage quota.</div>'+
+   '<div class="section"><strong>Browser storage</strong><div class="storageMeter"><div style="width:'+pct+'%"></div></div><div class="detailSub">'+used+' MB used'+(quota?" of "+quota+" MB":"")+'</div></div>'+
+   (hasPicker?'<div class="section"><strong>Large library storage</strong><div class="detailSub">Use a normal folder on your device for audio files that are too large for browser storage.</div><button class="btn primary" data-action="chooseExternalStorage">'+icon("folder")+(externalDir?"Change device folder":"Choose device folder")+'</button></div>':'<div class="section"><div class="notice">This browser does not provide a device-folder picker. Very large libraries may be limited by browser storage.</div></div>')+
+   '<div class="modalFoot"><button class="btn" data-action="persistNow">'+icon("shield")+'Enable persistent storage</button></div>');
+ })
 }
-async function persistNow(){await persistRequest();toast("Persistent storage requested.")}
 
 function sanitizeManifest(p){
  if(!p||typeof p!=="object")throw new Error("Invalid Localify preset.");
@@ -1539,6 +1547,7 @@ function bindEvents(){
   if(a==="exportPreset"){closeSheet();exportPreset();return}
   if(a==="backupMeta"){closeSheet();backupMeta();return}
   if(a==="storageInfo"){closeSheet();storageInfo();return}
+  if(a==="chooseExternalStorage"){try{await chooseExternalStorageDirectory();toast("Device audio folder connected.");storageInfo()}catch(e){toast(e?.message||"Could not connect that folder.")}return}
   if(a==="accountSettings"){closeSheet();openAccountSettings();return}
   if(a==="persistNow"){persistNow();return}
   if(a==="deleteLibrary"){closeSheet();deleteLibrary();return}

@@ -256,8 +256,19 @@ async function ensureStorageForAction(){
  if(!ok){toast("Localify is still preparing saved storage. Please try again in a moment.");throw new Error("Storage is not ready yet.");}
  return true;
 }
-async function persistRequest(){try{if(navigator.storage?.persist)await navigator.storage.persist()}catch{}}
-async function initOPFS(){try{if(navigator.storage?.getDirectory)rootDir=await navigator.storage.getDirectory();}catch{rootDir=null}}
+async function persistRequest(){
+ try{if(navigator.storage?.persist)await navigator.storage.persist()}catch(e){console.warn("Persistent storage request failed",e)}
+}
+async async function initOPFS(){
+ try{
+  if(navigator.storage?.getDirectory){
+   rootDir=await navigator.storage.getDirectory();
+   storageMode="opfs";
+   return true;
+  }
+ }catch(e){console.warn("OPFS unavailable",e)}
+ rootDir=null;storageMode="idb-v4";return false;
+}
 async function opfsFile(id,writeBlob){
  if(!rootDir)return null;
  const dir=await rootDir.getDirectoryHandle("localify-audio-v2",{create:true});
@@ -1181,11 +1192,20 @@ function renderPlayer(){
  const playing=!!t&&!audio.paused;$("#playBtn").innerHTML=icon(playing?"pause":"play");$("#progress").value=audio.duration?Math.round(audio.currentTime/audio.duration*1000):0;
  try{if("mediaSession"in navigator)navigator.mediaSession.playbackState=playing?"playing":t?"paused":"none"}catch{}
 }
-function storageInfo(){
- const p=navigator.storage?.estimate?navigator.storage.estimate():Promise.resolve({});
- Promise.resolve(p).then(x=>{const used=Math.round((x.usage||0)/1048576),quota=Math.round((x.quota||0)/1048576),pct=quota?Math.min(100,used/quota*100):0;openModal('<div class="modalHead"><h2>Storage & safety</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="notice">Persistent storage is bsically that localify saves the stuff on ur phone so its more safe but some browsers dont allow that but yeah</div><div class="section"><strong>Browser storage</strong><div class="storageMeter"><div style="width:'+pct+'%"></div></div><div class="detailSub">'+used+' MB used'+(quota?" of "+quota+" MB":"")+'</div></div><div class="modalFoot"><button class="btn" data-action="persistNow">'+icon("shield")+'Enable persistent storage</button></div>')})
+async function storageInfo(){
+ const x=navigator.storage?.estimate?await navigator.storage.estimate():{};
+ const used=Number(x.usage)||0,quota=Number(x.quota)||0,pct=quota?Math.min(100,used/quota*100):0;
+ let persisted=false;try{persisted=!!(await navigator.storage?.persisted?.())}catch{}
+ const opfs=!!navigator.storage?.getDirectory;
+ openModal('<div class="modalHead"><h2>Storage & safety</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div>'+
+   '<div class="notice">Localify Mobile now keeps audio out of IndexedDB whenever your browser supports OPFS. The fallback stores audio as small ArrayBuffer chunks instead of File/Blob objects. This greatly reduces large-import failures.</div>'+
+   '<div class="section"><strong>Storage used</strong><div class="storageMeter"><div style="width:'+pct+'%"></div></div><div class="detailSub">'+formatBytes(used)+' used'+(quota?' of '+formatBytes(quota):' (browser did not report a quota)')+'</div></div>'+
+   '<div class="section"><strong>Save mode</strong><div class="detailSub">'+(opfs?'OPFS available':'OPFS unavailable')+' • '+(persisted?'persistent storage enabled':'persistent storage not guaranteed')+'</div></div>'+
+   '<div class="notice"><strong>About storage limits:</strong> a website cannot get truly unlimited storage. The browser/device still enforces a quota. Persistent storage asks the browser not to evict Localify data automatically; it does not increase the quota by itself.</div>'+
+   '<div class="modalFoot"><button class="btn primary" data-action="persistNow">'+icon("shield")+'Protect Localify storage</button></div>');
 }
-async function persistNow(){await persistRequest();toast("Persistent storage requested.")}
+
+async function persistNow(){await persistRequest();let ok=false;try{ok=!!(await navigator.storage?.persisted?.())}catch{};toast(ok?"Localify storage is protected from automatic eviction.":"The browser did not grant persistent storage, but Localify will keep using its safest available storage mode.")}
 
 function sanitizeManifest(p){
  if(!p||typeof p!=="object")throw new Error("Invalid Localify preset.");

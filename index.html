@@ -1076,7 +1076,7 @@ function next(){
  let n=state.queueIndex+1;
  if(n>=state.queue.length){if(state.settings.repeat==="all")n=0;else{audio.pause();return}}
  state.queueIndex=n;
- playTrack(state.queue[n]);
+ playTrack(state.queue[n],true);
 }
 function prev(){
  if(audio.currentTime>4){audio.currentTime=0;return}
@@ -1084,7 +1084,7 @@ function prev(){
  let n=state.queueIndex-1;
  if(n<0)n=state.settings.repeat==="all"?state.queue.length-1:0;
  state.queueIndex=n;
- playTrack(state.queue[n]);
+ playTrack(state.queue[n],true);
 }
 let discordLastPayload="";
 function pushDiscordPresence(){

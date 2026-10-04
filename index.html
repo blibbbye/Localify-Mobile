@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-import-fix-1">
+<meta name="theme-color" content="#090b0e"><meta name="localify-build" content="2026-10-04-import-fix-2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1552,7 +1552,34 @@ async function importPreset(file){
    if(t.albumId){const a=state.albums.find(x=>x.id===t.albumId);if(a){t.album=a.title;t.albumArtist=a.artistNames||a.artist||t.albumArtist||NONE}}
    if(Array.isArray(src0.albumArtistIds))t.albumArtistIds=[...new Set(src0.albumArtistIds.map(id=>artistIdMap.get(id)||id).filter(id=>state.artists.some(x=>x.id===id)))];
    const e=t.audioFile?index.get(t.audioFile):null;
-   if(e){await saveZipAudio(t,file,e)}else if(t.hasAudio)throw new Error("Missing audio for "+title);
+   if(e){
+    try{
+     await saveZipAudio(t,file,e);
+    }catch(storageErr){
+     console.warn("Localify audio save failed; offering device-folder storage",storageErr);
+     if(!externalDir&&typeof window.showDirectoryPicker==="function"&&!nativeIsAvailable()){
+      busyHide();
+      const useDevice=await new Promise(resolve=>{
+       openModal('<div class="modalHead"><h2>Save audio to your device</h2><button class="circle" data-action="closeModal">'+icon("close")+'</button></div><div class="notice">Local browser storage could not save <strong>'+esc(title)+'</strong>. Choose a folder on your device and Localify will continue importing the preset there. This is the recommended option for large libraries.</div><div class="modalFoot"><button class="btn" id="saveAudioCancel">Cancel import</button><button class="btn primary" id="saveAudioChoose">'+icon("folder")+'Choose device folder</button></div>');
+       $("#saveAudioCancel").onclick=()=>{closeModal();resolve(false)};
+       $("#saveAudioChoose").onclick=async()=>{
+        try{await chooseExternalStorageDirectory();closeModal();resolve(true)}
+        catch(err){toast(err?.message||"Could not access that folder.");}
+       };
+      });
+      if(useDevice){
+       externalStorageMode=true;
+       busyShow("Importing preset","Continuing with device storage…");
+       busyUpdate("Importing preset",done+" / "+manifest.tracks.length+" songs • "+title,Math.round((done/(manifest.tracks.length||1))*94)+3);
+       await saveZipAudio(t,file,e);
+      }else{
+       throw storageErr;
+      }
+     }else{
+      throw storageErr;
+     }
+    }
+   }else if(t.hasAudio)throw new Error("Missing audio for "+title);
    t._blob=null;t.blob=null;state.tracks.push(t);trackIdMap.set(originalId,t.id);importedTrackIds.push(t.id);
    if(done%100===0)await saveMeta(false);
    if(done%8===0)await new Promise(resolve=>setTimeout(resolve,0));
@@ -1837,7 +1864,7 @@ async function boot(){
  }catch(e){console.error("boot storage",e);busyHide()}
 }
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("./sw.js?v=20261004-storagefix6",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
+ navigator.serviceWorker.register("./sw.js?v=20261004-storagefix7",{updateViaCache:"none"}).then(r=>r.update()).catch(e=>console.warn("service worker update failed",e));
 }
 boot().then(()=>{setTimeout(()=>{try{window.LocalifyNative?.connectDiscord?.()}catch{};pushDiscordPresence()},400)});
 })();

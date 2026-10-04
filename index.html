@@ -1145,6 +1145,7 @@ async function playTrack(id){
  recordListeningProgress();
  const b=await loadAudio(t);if(!b){toast("This song's audio is missing. Please re-import it.");return}
  currentBlob=b;if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(b);audio.src=audioUrl;state.currentId=id;
+ setNativePlaybackStatus(t,true);
  state.recent=[id,...state.recent.filter(x=>x!==id)].slice(0,100);state.queue=state.queue.filter(x=>state.tracks.some(t=>t.id===x));if(!state.queue.includes(id))state.queue.push(id);state.queueIndex=state.queue.indexOf(id);
  audio.volume=state.settings.volume??.9;updateMediaSession(t);renderPlayer();saveMeta(true).catch(()=>{});
  try{await audio.play();recordPlay(t);if(state.detail?.type==="folder")showFolder(state.detail.id);else if(state.detail?.type)showDetail(state.detail.type,state.detail.id);else render()}catch(e){toast("Press play again to start audio.");}
@@ -1218,18 +1219,24 @@ function pushDiscordPresence(){
   if(native?.setDiscordPresence){native.setDiscordPresence(JSON.stringify(payload||{}));discordLastPayload=JSON.stringify(payload||{});}
  }catch(e){console.warn("Discord bridge unavailable",e)}
 }
+function setNativePlaybackStatus(t,playing){
+ try{const n=window.LocalifyNative;if(n?.updatePlaybackStatus)n.updatePlaybackStatus(t?trackTitle(t):"Localify Mobile",t?artistText(t):"Localify playback",!!playing)}catch(e){console.warn("native playback status unavailable",e)}
+}
 async function updateMediaSession(t){
+ try{if("audioSession"in navigator)navigator.audioSession.type="playback"}catch{}
  if(!("mediaSession"in navigator))return;
- let artwork=[];
- try{const cover=await coverFor(t);if(cover)artwork=[{src:cover}] }catch{}
- try{navigator.mediaSession.metadata=new MediaMetadata({title:trackTitle(t),artist:artistText(t)===NONE?"":artistText(t),album:albumName(t)===NONE?"":albumName(t),artwork:artwork})}catch{}
  const ms=navigator.mediaSession;
- try{ms.setActionHandler("play",()=>audio.play())}catch{}
+ let artwork=[];
+ try{const cover=await coverFor(t);if(cover)artwork=[{src:cover,sizes:"512x512",type:"image/*"}]}catch{}
+ try{ms.metadata=new MediaMetadata({title:trackTitle(t),artist:artistText(t)===NONE?"":artistText(t),album:albumName(t)===NONE?"":albumName(t),artwork});ms.playbackState=audio.paused?"paused":"playing"}catch{}
+ try{ms.setActionHandler("play",()=>audio.play().catch(()=>{}))}catch{}
  try{ms.setActionHandler("pause",()=>audio.pause())}catch{}
  try{ms.setActionHandler("previoustrack",prev)}catch{}
  try{ms.setActionHandler("nexttrack",next)}catch{}
- try{ms.setActionHandler("seekbackward",()=>audio.currentTime=Math.max(0,audio.currentTime-10))}catch{}
- try{ms.setActionHandler("seekforward",()=>audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10))}catch{}
+ try{ms.setActionHandler("seekbackward",()=>{audio.currentTime=Math.max(0,audio.currentTime-10);updateMediaSessionPosition()})}catch{}
+ try{ms.setActionHandler("seekforward",()=>{audio.currentTime=Math.min(audio.duration||0,audio.currentTime+10);updateMediaSessionPosition()})}catch{}
+ try{ms.setActionHandler("seekto",d=>{if(!d)return;const p=Math.max(0,Math.min(audio.duration||0,Number(d.seekTime)||0));if(d.fastSeek&&typeof audio.fastSeek==="function")audio.fastSeek(p);else audio.currentTime=p;updateMediaSessionPosition()})}catch{}
+ try{ms.setActionHandler("stop",()=>{audio.pause();audio.currentTime=0;updateMediaSessionPosition()})}catch{}
 }
 function updateMediaSessionPosition(){
  if(!("mediaSession"in navigator)||!audio.duration||!Number.isFinite(audio.duration))return;
@@ -1528,6 +1535,12 @@ function openPlayerEffects(){
    '</div>');
 }
 
+function initBackgroundPlayback(){
+ try{audio.preload="auto";audio.setAttribute("playsinline","");audio.setAttribute("webkit-playsinline","");}catch{}
+ try{if("audioSession"in navigator)navigator.audioSession.type="playback"}catch{}
+}
+initBackgroundPlayback();
+
 function bindEvents(){
  $("#search").addEventListener("input",e=>{state.search=e.target.value;state.view=e.target.value.trim()?"search":state.view==="search"?"home":state.view;render()});
  $("#audioPicker").addEventListener("change",e=>{const files=[...e.target.files];e.target.value="";addFiles(files)});
@@ -1547,11 +1560,13 @@ function bindEvents(){
  $("#profileBtn")?.addEventListener("click",openProfile);
  $("#playBtn").onclick=()=>{if(!state.currentId){if(state.tracks[0])playTrack(state.tracks[0].id);return}if(audio.paused)audio.play().catch(()=>{});else audio.pause();};
  $("#prevBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();prev()}; $("#playerMoreBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openPlayerControls()}); $("#nextBtn").onclick=(e)=>{e.preventDefault();e.stopPropagation();next()};const seekProgress=e=>{if(audio.duration){audio.currentTime=(+e.target.value/1000)*audio.duration;updateMediaSessionPosition();}};$("#progress").oninput=seekProgress;$("#progress").onchange=seekProgress;
- audio.addEventListener("play",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="playing"}catch{};renderPlayer();scheduleSave();pushDiscordPresence()});
- audio.addEventListener("pause",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
+ audio.addEventListener("play",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="playing"}catch{};const t=state.tracks.find(x=>x.id===state.currentId);setNativePlaybackStatus(t,true);renderPlayer();scheduleSave();pushDiscordPresence()});
+ audio.addEventListener("pause",()=>{try{if("mediaSession"in navigator)navigator.mediaSession.playbackState="paused"}catch{};const t=state.tracks.find(x=>x.id===state.currentId);setNativePlaybackStatus(t,false);recordListeningProgress();renderPlayer();scheduleSave();pushDiscordPresence()});
  audio.addEventListener("timeupdate",()=>{recordListeningProgress();updatePlayerProgressOnly();updateMediaSessionPosition();});
- audio.addEventListener("loadedmetadata",()=>{updatePlayerProgressOnly();updateMediaSessionPosition()});
+ audio.addEventListener("loadedmetadata",()=>{updatePlayerProgressOnly();updateMediaSessionPosition();});
  audio.addEventListener("ended",()=>{recordListeningProgress();next();pushDiscordPresence()});
+ document.addEventListener("visibilitychange",()=>{try{const t=state.tracks.find(x=>x.id===state.currentId);if("mediaSession"in navigator)navigator.mediaSession.playbackState=t?(audio.paused?"paused":"playing"):"none"}catch{}});
+ window.addEventListener("pagehide",()=>{recordListeningProgress();scheduleSave()});
 
  document.addEventListener("click",async e=>{
   unlockMobileAudio();

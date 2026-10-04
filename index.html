@@ -1151,20 +1151,19 @@ function bindEvents(){
  $("#modalShade").addEventListener("click",e=>{if(e.target===$("#modalShade"))closeModal()});
 }
 async function boot(){
-  busyShow("Loading save","Loading your Localify library…");busyUpdate("Loading save","Preparing local storage…",8);
-  // Reset transient UI-operation state on every page load so an interrupted
-  // import/export can never leave the whole page looking disabled.
+  // Reset transient UI-operation state on every page load.
   busy=false;operationController=null;saveTimer=0;
   $("#busyShade").classList.remove("open");
-  if(operationController?.abort)try{operationController.abort()}catch{}
   try{bindEvents();render()}catch(e){console.error("initial UI bind",e)}
+  busyShow("Loading save","Loading your Localify library…");
+  busyUpdate("Loading save","Preparing local storage…",8);
   storageInitPromise=(async()=>{
    try{
     await Promise.race([openDB(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("IndexedDB startup timed out.")),8000))]);
     await Promise.race([initOPFS(),new Promise(resolve=>setTimeout(resolve,5000))]);
     await persistRequest();
 
-  busyUpdate("Loading save","Restoring your library…",55);busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
+  busyUpdate("Loading save","Restoring your library…",55);const had=await restore();
   normalizeStats();normalizeProfile();
   if(!had)await saveMeta(true);
   else{
